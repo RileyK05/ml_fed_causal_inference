@@ -1,0 +1,32 @@
+announcement_date,scheduled_or_unscheduled,notes,use_for_surprise
+2023-02-01,scheduled,Two-day meeting Jan/Feb 31-1; second day used,True
+2023-03-22,scheduled,Two-day meeting March 21-22; second day used; SEP/dot-plot meeting,True
+2023-05-03,scheduled,Two-day meeting May 2-3; second day used,True
+2023-06-14,scheduled,Two-day meeting June 13-14; second day used; SEP/dot-plot meeting,True
+2023-07-26,scheduled,Two-day meeting July 25-26; second day used,True
+2023-09-20,scheduled,Two-day meeting September 19-20; second day used; SEP/dot-plot meeting,True
+2023-11-01,scheduled,Two-day meeting Oct/Nov 31-1; second day used,True
+2023-12-13,scheduled,Two-day meeting December 12-13; second day used; SEP/dot-plot meeting,True
+2024-01-31,scheduled,Two-day meeting January 30-31; second day used,True
+2024-03-20,scheduled,Two-day meeting March 19-20; second day used; SEP/dot-plot meeting,True
+2024-05-01,scheduled,Two-day meeting Apr/May 30-1; second day used,True
+2024-06-12,scheduled,Two-day meeting June 11-12; second day used; SEP/dot-plot meeting,True
+2024-07-31,scheduled,Two-day meeting July 30-31; second day used,True
+2024-09-18,scheduled,Two-day meeting September 17-18; second day used; SEP/dot-plot meeting,True
+2024-11-07,scheduled,Two-day meeting November 6-7; second day used,True
+2024-12-18,scheduled,Two-day meeting December 17-18; second day used; SEP/dot-plot meeting,True
+2025-01-29,scheduled,Two-day meeting January 28-29; second day used,True
+2025-03-19,scheduled,Two-day meeting March 18-19; second day used; SEP/dot-plot meeting,True
+2025-05-07,scheduled,Two-day meeting May 6-7; second day used,True
+2025-06-18,scheduled,Two-day meeting June 17-18; second day used; SEP/dot-plot meeting,True
+2025-07-30,scheduled,Two-day meeting July 29-30; second day used,True
+2025-08-22,unscheduled,"Excluded from surprise analysis: notation vote on longer-run goals statement, no rate decision",False
+2025-09-17,scheduled,Two-day meeting September 16-17; second day used; SEP/dot-plot meeting,True
+2025-10-29,scheduled,Two-day meeting October 28-29; second day used,True
+2025-12-10,scheduled,Two-day meeting December 9-10; second day used; SEP/dot-plot meeting,True
+2026-01-28,scheduled,Two-day meeting January 27-28; second day used,True
+2026-03-18,scheduled,Two-day meeting March 17-18; second day used; SEP/dot-plot meeting,True
+2026-04-29,scheduled,Two-day meeting April 28-29; second day used,True
+2026-06-17,scheduled,Two-day meeting June 16-17; second day used; SEP/dot-plot meeting,True
+2026-07-29,scheduled,Two-day meeting July 28-29; second day used,True
+2026-09-16,scheduled,Two-day meeting September 15-16; second day used; SEP/dot-plot meeting,True

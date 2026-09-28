@@ -1,0 +1,63 @@
+{
+  "question": "Q1",
+  "question_key": "q1_total_effect",
+  "name": "PLR-DML usmpd_sp500 STMT ridge",
+  "run_id": "20260925-192602_plr-dml-usmpd-sp500-stmt-ridge",
+  "role": "primary",
+  "created": "2026-09-25T19:26:02",
+  "params": {
+    "outcome": "usmpd_sp500",
+    "treatment": "STMT",
+    "outcome_ticker": "SPY",
+    "nuisance": "ridge",
+    "alpha": null,
+    "min_train": 82,
+    "test_size": 20,
+    "step": 20,
+    "embargo": 0,
+    "se": "HC1",
+    "hac_lag": 4,
+    "n_boot": 400,
+    "seed": 0,
+    "level": 0.95,
+    "role": "primary",
+    "name": null
+  },
+  "metrics": {
+    "theta": -0.9637402150484503,
+    "se": 0.1371466099134412,
+    "ci_low": -1.232542631080559,
+    "ci_high": -0.6949377990163417,
+    "se_type": "HC1",
+    "n_meetings": 163,
+    "n_meetings_discarded": 82,
+    "sd_s_resid": 0.2792915785772169,
+    "r2_y": -0.11833384833842153,
+    "r2_s": -0.002675041962384439,
+    "boot_se": 0.1399682635034516,
+    "boot_ci_low": -1.2476010911222717,
+    "boot_ci_high": -0.70445979376745,
+    "ols_theta": -0.9759119923307978,
+    "ols_controls_theta": -1.1190969443588943
+  },
+  "datasets": {
+    "usmpd_statements": "3cbe3c0d9075",
+    "mps_surprises": "908f5b3d4b2e",
+    "treasury_1y": "83fb80b2082c"
+  },
+  "tables": [
+    "estimates",
+    "audit",
+    "folds",
+    "residuals",
+    "influence"
+  ],
+  "figures": [
+    "residualized-fit"
+  ],
+  "notes": "theta: percent return per 10bp of the STMT surprise. Complete cases only; 16 meeting(s) dropped for missing inputs. Nuisances fit on the first 82 meetings and never scored on them. Inference over meetings on the cross-fitted score (HC1); the bootstrap resamples whole meetings without refitting nuisances. OLS baselines use the same scored meetings as the DML.",
+  "env": {
+    "python": "3.12.10",
+    "pandas": "3.0.6"
+  }
+}

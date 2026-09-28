@@ -1,0 +1,19 @@
+item,value
+outcome,etf_day0 (y in percent)
+treatment,STMT (s per 10bp of 1y-yield-equivalent surprise)
+controls,"lagged_VIXCLS, lagged_DGS2, lagged_DGS10, val_1yr, val_5yr, val_10yr"
+n_meetings_in_sample,30
+n_meetings_complete,30
+n_meetings_dropped_incomplete,0
+n_meetings_discarded_training,10
+n_meetings_scored,20
+scored_date_range,2024-05-01 .. 2026-09-16
+mean_y_scored,-0.1762
+sd_y_scored,1.0381
+mean_s_scored,0.0452
+sd_s_scored,0.2937
+sd_s_resid,0.3212
+r2_y_nuisance_oof,-0.485
+r2_s_nuisance_oof,-0.5091
+zero_outcome_meetings,(none)
+incomplete_meetings,(none)

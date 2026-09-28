@@ -1,0 +1,11 @@
+[server]
+headless = true
+runOnSave = true
+
+[browser]
+gatherUsageStats = false
+
+[theme]
+# "light" or "dark"; charts switch palette to match
+base = "light"
+font = "sans-serif"

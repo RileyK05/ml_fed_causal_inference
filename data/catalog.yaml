@@ -1,0 +1,185 @@
+# Dataset catalog: the single registry of every dataset the project reads.
+#
+# Adding a dataset = drop the file under data/{raw,interim,processed}/ and add an entry here.
+# It then shows up automatically in: fedci.data.load(), the DuckDB SQL layer (as a view with
+# the same name), `fedci check`, and the Data Catalog page of the app.
+#
+# Fields
+#   path         file path relative to data/
+#   layer        raw | interim | processed
+#   source       who published it
+#   grain        daily | monthly | event   (event = one row per FOMC/communication event)
+#   date_column  column parsed as the date index for range filters and coverage
+#   key          column(s) that uniquely identify a row (checked by `fedci check`)
+#   questions    which of Q1-Q5 (docs/question.md) use it
+#   na_values    extra strings to treat as missing (optional)
+#   description  one line; details live in data/PROVENANCE.md
+
+datasets:
+
+  # ---- Treatment: FOMC calendar and monetary policy surprises ----
+  fomc_dates:
+    path: interim/fomc/fomc_dates.csv
+    layer: interim
+    source: Federal Reserve Board, FOMC calendars
+    grain: event
+    date_column: announcement_date
+    key: [announcement_date]
+    questions: [Q1, Q2, Q3, Q4, Q5]
+    description: All FOMC announcement dates in the window, with scheduled/unscheduled flag and use_for_surprise.
+
+  fomc_meetings:
+    path: interim/fomc/fomc_meetings.csv
+    layer: interim
+    source: Federal Reserve Board, FOMC calendars
+    grain: event
+    date_column: announcement_date
+    key: [announcement_date]
+    questions: [Q1, Q2, Q3, Q4, Q5]
+    description: Scheduled meetings used for surprise analysis (use_for_surprise = True). The meeting spine.
+
+  usmpd_statements:
+    path: interim/usmpd/usmpd_statements.csv
+    layer: interim
+    source: SF Fed USMPD (Acosta et al. 2025)
+    grain: event
+    date_column: Date
+    key: [Date]
+    questions: [Q1, Q2, Q3, Q4, Q5]
+    description: Raw high-frequency changes (MP1, MP2, FF1-6, ED1-8, OIS, UST, TIPS, SP500, FX) in the statement window, 1994-present.
+
+  usmpd_press_conferences:
+    path: interim/usmpd/usmpd_press_conferences.csv
+    layer: interim
+    source: SF Fed USMPD (Acosta et al. 2025)
+    grain: event
+    date_column: Date
+    key: [Date]
+    questions: [Q1, Q3]
+    description: Same instruments as statements, press-conference window, 2011-present.
+
+  usmpd_monetary_events:
+    path: interim/usmpd/usmpd_monetary_events.csv
+    layer: interim
+    source: SF Fed USMPD (Acosta et al. 2025)
+    grain: event
+    date_column: Date
+    key: [Date]
+    questions: [Q1]
+    description: Same instruments, full monetary-event window (statement + press conference).
+
+  usmpd_minutes:
+    path: interim/usmpd/usmpd_minutes.csv
+    layer: interim
+    source: SF Fed USMPD (Acosta et al. 2025)
+    grain: event
+    date_column: Date
+    key: [Date]
+    questions: [Q3]
+    description: Same instruments around minutes releases, 2001-present. Auxiliary (training-only) events for Q3.
+
+  mps_surprises:
+    path: raw/sf_fed_usmpd/monetary-policy-surprises/mps.csv
+    layer: raw
+    source: SF Fed USMPD (Acosta et al. 2025)
+    grain: event
+    date_column: Date
+    key: [Date]
+    questions: [Q1, Q2, Q3, Q4, Q5]
+    na_values: ["NA"]
+    description: Constructed first-principal-component surprises STMT / PC / ME, normalized to move the 1y yield one-for-one.
+
+  mps_minutes_surprises:
+    path: raw/sf_fed_usmpd/monetary-policy-surprises/mps_minutes.csv
+    layer: raw
+    source: SF Fed USMPD (Acosta et al. 2025)
+    grain: event
+    date_column: Date
+    key: [Date]
+    questions: [Q3]
+    na_values: ["NA"]
+    description: Constructed surprise MIN for minutes releases, 2005-present.
+
+  treasury_1y:
+    path: raw/sf_fed_usmpd/monetary-policy-surprises/y1.csv
+    layer: raw
+    source: SF Fed USMPD zip (Gurkaynak-Sack-Wright SVENY01)
+    grain: daily
+    date_column: Date
+    key: [Date]
+    questions: [Q1]
+    na_values: ["NA"]
+    description: Daily 1-year zero-coupon Treasury yield used to normalize the surprises, 1994-present.
+
+  # ---- Outcomes ----
+  etf_prices:
+    path: interim/etf/etf_adj_close_prices.csv
+    layer: interim
+    source: Yahoo Finance via yfinance
+    grain: daily
+    date_column: date
+    key: [date]
+    questions: [Q1, Q2, Q3, Q4, Q5]
+    description: Adjusted close, 11 SPDR sector ETFs + SPY, wide (one column per ticker).
+
+  etf_returns:
+    path: interim/etf/etf_daily_returns.csv
+    layer: interim
+    source: Yahoo Finance via yfinance
+    grain: daily
+    date_column: date
+    key: [date]
+    questions: [Q1, Q2, Q3, Q4, Q5]
+    description: Simple daily returns from etf_prices, no gap filling, wide.
+
+  # ---- Controls and channels ----
+  fred_controls:
+    path: interim/fred/fred_controls.csv
+    layer: interim
+    source: FRED (St. Louis Fed)
+    grain: daily
+    date_column: date
+    key: [date]
+    questions: [Q1, Q2, Q4]
+    description: VIX, 2y/10y yields, term spread, BBB/AAA OAS, WTI, broad dollar, 3m bill. Channel variables for Q2.
+
+  cfed_inflation_expectations:
+    path: interim/cleveland_fed/cfed_inflation_expectations_monthly.csv
+    layer: interim
+    source: Cleveland Fed
+    grain: monthly
+    date_column: model_output_date
+    key: [model_output_date]
+    questions: [Q1, Q3]
+    description: Model-implied expected inflation, 1-30y horizons. Label date is NOT publish date; see cfed_fomc_mapping.
+
+  cfed_fomc_mapping:
+    path: interim/cleveland_fed/cfed_fomc_mapping.csv
+    layer: interim
+    source: Built in-project (Cleveland Fed + BLS release dates)
+    grain: event
+    date_column: fomc_date
+    key: [fomc_date]
+    questions: [Q1, Q3]
+    description: Inflation expectations actually published as of each FOMC date (naive vs corrected for CPI release timing).
+
+  bls_cpi_release_dates:
+    path: raw/bls/bls_cpi_release_dates.csv
+    layer: raw
+    source: BLS release schedule (hand-compiled)
+    grain: monthly
+    date_column: release_date
+    key: [reference_month]
+    questions: [Q1]
+    description: CPI release date per reference month. Also the seed for the auxiliary CPI event calendar (Q3).
+
+  # ---- Analysis-ready ----
+  event_study_table:
+    path: processed/event_study_table.csv
+    layer: processed
+    source: Built in-project from the datasets above
+    grain: event
+    date_column: announcement_date
+    key: [announcement_date]
+    questions: [Q1, Q2]
+    description: One row per FOMC meeting - surprises, same-day sector returns, same-day and lagged controls. Dictionary in processed/.

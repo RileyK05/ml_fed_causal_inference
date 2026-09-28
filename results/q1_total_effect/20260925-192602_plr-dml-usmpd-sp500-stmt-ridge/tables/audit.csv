@@ -1,0 +1,19 @@
+item,value
+outcome,usmpd_sp500 (y in percent)
+treatment,STMT (s per 10bp of 1y-yield-equivalent surprise)
+controls,"y1_level, y1_chg_21d, y1_chg_63d, st_prev, me_prev, st_mean3"
+n_meetings_in_sample,261
+n_meetings_complete,245
+n_meetings_dropped_incomplete,16
+n_meetings_discarded_training,82
+n_meetings_scored,163
+scored_date_range,2006-05-10 .. 2026-09-16
+mean_y_scored,0.038
+sd_y_scored,0.4838
+mean_s_scored,0.0273
+sd_s_scored,0.2794
+sd_s_resid,0.2793
+r2_y_nuisance_oof,-0.1183
+r2_s_nuisance_oof,-0.0027
+zero_outcome_meetings,(none)
+incomplete_meetings,"1994-02-04, 1994-03-22, 1994-05-17, 1994-07-06, 1994-08-16, 1994-09-27, 1994-11-15, 1994-12-20, 1995-02-01, 1995-03-28, 1995-05-23, 1995-07-06, 1995-08-22, 1995-09-26, 1995-11-15, 1995-12-19"

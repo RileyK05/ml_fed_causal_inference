@@ -1,0 +1,61 @@
+{
+  "question": "Q1",
+  "question_key": "q1_total_effect",
+  "name": "PLR-DML etf_day0 STMT ridge",
+  "run_id": "20260925-192657_plr-dml-etf-day0-stmt-ridge",
+  "role": "robustness",
+  "created": "2026-09-25T19:26:57",
+  "params": {
+    "outcome": "etf_day0",
+    "treatment": "STMT",
+    "outcome_ticker": "SPY",
+    "nuisance": "ridge",
+    "alpha": null,
+    "min_train": 10,
+    "test_size": 5,
+    "step": 5,
+    "embargo": 0,
+    "se": "HC1",
+    "hac_lag": 4,
+    "n_boot": 400,
+    "seed": 0,
+    "level": 0.95,
+    "role": "robustness",
+    "name": "PLR-DML etf_day0 STMT ridge"
+  },
+  "metrics": {
+    "theta": -1.2251203084664084,
+    "se": 0.9881080660448529,
+    "ci_low": -3.1617765307478445,
+    "ci_high": 0.7115359138150279,
+    "se_type": "HC1",
+    "n_meetings": 20,
+    "n_meetings_discarded": 10,
+    "sd_s_resid": 0.32119337159981226,
+    "r2_y": -0.484963056648152,
+    "r2_s": -0.5091392155752057,
+    "boot_se": 1.0636372997000005,
+    "boot_ci_low": -2.7993600207497495,
+    "boot_ci_high": 1.244670630685414,
+    "ols_theta": -0.771119724576112,
+    "ols_controls_theta": -0.8235991358043391
+  },
+  "datasets": {
+    "event_study_table": "58b2a3a8b735"
+  },
+  "tables": [
+    "estimates",
+    "audit",
+    "folds",
+    "residuals",
+    "influence"
+  ],
+  "figures": [
+    "residualized-fit"
+  ],
+  "notes": "theta: percent return per 10bp of the STMT surprise. Complete cases only; 0 meeting(s) dropped for missing inputs. Nuisances fit on the first 10 meetings and never scored on them. Inference over meetings on the cross-fitted score (HC1); the bootstrap resamples whole meetings without refitting nuisances. OLS baselines use the same scored meetings as the DML.",
+  "env": {
+    "python": "3.12.10",
+    "pandas": "3.0.6"
+  }
+}
