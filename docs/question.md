@@ -2,7 +2,7 @@
 
 **Version:** Q-spec v1.1 (2026-09-25)
 **Status:** Agreed project direction; detailed specifications remain draft until final evaluation.
-**Model discussion:** [methods.md](methods.md); detailed Q3 architecture options in [transformer.md](transformer.md).
+**Model discussion:** [methods.md](methods.md); detailed Q3 architecture options in [transformer.md](../encoder/docs/transformer.md).
 
 Q3 is the central contribution: predict how firms respond to monetary-policy news.
 Q1 supplies the treatment definition and aggregate baseline. Q4 tests whether Q3's

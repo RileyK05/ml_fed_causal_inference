@@ -27,7 +27,7 @@ _CACHE_MAX = 32
 
 @functools.lru_cache(maxsize=1)
 def _tickers() -> list[str]:
-    from fedci.data import load
+    from fedcore.data import load
     return sorted(c[4:] for c in load("event_study_table").columns if c.startswith("ret_"))
 
 

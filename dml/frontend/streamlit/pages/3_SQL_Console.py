@@ -5,7 +5,7 @@ import streamlit as st
 
 c.page("SQL console", ":material/terminal:")
 st.title("SQL console")
-st.caption("Each catalog dataset is a view with the same name. Same engine as fedci.data.query().")
+st.caption("Each catalog dataset is a view with the same name. Same engine as fedcore.data.query().")
 
 EXAMPLES = {
     "Biggest statement surprises": "SELECT Date, STMT, PC, ME\nFROM mps_surprises\nORDER BY ABS(STMT) DESC\nLIMIT 15",

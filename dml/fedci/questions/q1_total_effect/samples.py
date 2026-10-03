@@ -35,7 +35,7 @@ from __future__ import annotations
 
 import pandas as pd
 
-from fedci.data import load
+from fedcore.data import load
 
 SURPRISES = ("STMT", "MP1", "ME")
 OUTCOMES = ("usmpd_sp500", "etf_day0")

@@ -7,7 +7,7 @@ from pathlib import Path
 
 import yaml
 
-from fedci.config import CATALOG_FILE, DATA
+from fedcore.config import CATALOG_FILE, DATA
 
 LAYERS = ("raw", "interim", "processed")
 GRAINS = ("daily", "monthly", "event")

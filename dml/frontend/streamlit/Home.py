@@ -5,8 +5,9 @@ import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
 
-from fedci.questions import specs
-from fedci.results import ResultStore
+from fedcore.questions import specs
+from fedci.config import RESULTS
+from fedcore.results import ResultStore
 
 c.page("Home", ":material/home:")
 
@@ -20,7 +21,7 @@ st.markdown("> The complexity belongs in representation learning, not in the cau
 
 meetings = c.data.meetings()
 cov = c.coverage()
-store = ResultStore()
+store = ResultStore(RESULTS)
 runs = store.summary()
 
 k1, k2, k3, k4 = st.columns(4)

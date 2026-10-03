@@ -1,8 +1,8 @@
 # Dataset catalog: the single registry of every dataset the project reads.
 #
 # Adding a dataset = drop the file under data/{raw,interim,processed}/ and add an entry here.
-# It then shows up automatically in: fedci.data.load(), the DuckDB SQL layer (as a view with
-# the same name), `fedci check`, and the Data Catalog page of the app.
+# It then shows up automatically in: fedcore.data.load(), the DuckDB SQL layer (as a view with
+# the same name), `fedcore check`, and the Data Catalog page of the app.
 #
 # Fields
 #   path         file path relative to data/
@@ -10,7 +10,7 @@
 #   source       who published it
 #   grain        daily | monthly | event   (event = one row per FOMC/communication event)
 #   date_column  column parsed as the date index for range filters and coverage
-#   key          column(s) that uniquely identify a row (checked by `fedci check`)
+#   key          column(s) that uniquely identify a row (checked by `fedcore check`)
 #   questions    which of Q1-Q5 (docs/question.md) use it
 #   na_values    extra strings to treat as missing (optional)
 #   description  one line; details live in data/PROVENANCE.md

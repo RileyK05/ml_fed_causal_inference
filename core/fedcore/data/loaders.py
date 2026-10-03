@@ -5,7 +5,7 @@ import hashlib
 
 import pandas as pd
 
-from fedci.data.catalog import Dataset, catalog, get
+from fedcore.data.catalog import Dataset, catalog, get
 
 
 def load(name: str, start=None, end=None, columns: list[str] | None = None) -> pd.DataFrame:

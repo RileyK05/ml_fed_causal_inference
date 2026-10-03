@@ -8,7 +8,8 @@ from fastapi import APIRouter, HTTPException, Response
 
 from fedci.api.export import render_export
 from fedci.api.serialize import records
-from fedci.results import ResultStore
+from fedci.config import RESULTS
+from fedcore.results import ResultStore
 
 router = APIRouter()
 
@@ -17,12 +18,12 @@ _EXPORT_TABLES = {"residualized_fit": "residuals", "influence": "influence", "co
 
 @router.get("/runs")
 def list_runs() -> dict:
-    return {"runs": records(ResultStore().summary())}
+    return {"runs": records(ResultStore(RESULTS).summary())}
 
 
 @router.get("/runs/{question}/{run_id}")
 def get_run(question: str, run_id: str) -> dict:
-    for run in ResultStore().runs(question=question.upper()):
+    for run in ResultStore(RESULTS).runs(question=question.upper()):
         if run.run_id == run_id:
             # manifest entries are store slugs ("residualized_fit" -> "residualized-fit");
             # restore underscores so names match what pipelines saved.
@@ -42,7 +43,7 @@ def export_run_figure(question: str, run_id: str,
                       figure: Literal["residualized_fit", "influence", "coefficients"],
                       format: Literal["png", "svg"] = "png") -> Response:
     """Static seaborn render of one saved run, from its tables -- for slides."""
-    for run in ResultStore().runs(question=question.upper()):
+    for run in ResultStore(RESULTS).runs(question=question.upper()):
         if run.run_id == run_id:
             needed = _EXPORT_TABLES[figure]
             data = render_export(

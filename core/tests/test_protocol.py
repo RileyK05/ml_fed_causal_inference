@@ -1,6 +1,6 @@
 import pandas as pd
 
-from fedci.eval import meeting_bootstrap, walk_forward
+from fedcore.protocol import meeting_bootstrap, walk_forward
 
 MEETINGS = pd.date_range("2000-01-01", periods=50, freq="45D")
 

@@ -35,8 +35,8 @@ import pandas as pd
 from fedci.api.figures import residualized_fit_figure
 from fedci.eval import (leave_one_out, ols_event_study, partially_linear_dml)
 from fedci.questions.q1_total_effect.samples import OUTCOMES, SURPRISES, etf_day0_sample, usmpd_window_sample
-from fedci.questions.q1_total_effect.spec import SPEC
-from fedci.results import ResultStore
+from fedcore.questions.q1_total_effect import SPEC
+from fedcore.results import ResultStore
 
 _INT = ("min_train", "test_size", "step", "embargo", "hac_lag", "n_boot", "seed")
 _FLOAT = ("alpha", "level")

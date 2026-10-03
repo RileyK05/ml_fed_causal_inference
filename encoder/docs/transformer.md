@@ -2,8 +2,8 @@
 
 **Version:** 0.1 (2026-09-25)  
 **Status:** Research design and implementation options; no trained model or empirical result yet.  
-**Parent specification:** [question.md](question.md), Q-spec v1.1.  
-**Other methods:** [methods.md](methods.md).
+**Parent specification:** [question.md](../../docs/question.md), Q-spec v1.1.  
+**Other methods:** [methods.md](../../docs/methods.md).
 
 The main research question is whether a learned representation of firm state predicts
 responses to monetary-policy surprises better than explicit financial characteristics.
@@ -471,7 +471,7 @@ removal/perturbation experiments. Keep a historical-cutoff selector in any model
 
 ## 14. Implementation outline and Q4 handoff
 
-Suggested future modules under `src/backend/fedci/questions/q3_susceptibility/`:
+Suggested modules (now split between `core/fedcore/q3/`, shared, and the `encoder/` and `cde/` projects; see their HANDOFF docs):
 
 ```text
 features.py             # point-in-time joins, input/target definitions

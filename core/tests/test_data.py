@@ -1,7 +1,7 @@
 import pandas as pd
 import pytest
 
-from fedci import data
+from fedcore import data
 
 
 def test_catalog_all_datasets_pass_integrity():

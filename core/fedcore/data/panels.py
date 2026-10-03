@@ -6,8 +6,8 @@ import warnings
 
 import pandas as pd
 
-from fedci.data.catalog import get
-from fedci.data.loaders import load
+from fedcore.data.catalog import get
+from fedcore.data.loaders import load
 
 TRADING_CALENDAR = "etf_returns"  # dataset whose date column defines trading days
 

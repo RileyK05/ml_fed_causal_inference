@@ -1,9 +1,9 @@
 """Command line entry point.
 
-    fedci check                 validate every catalog dataset (exists, dates parse, keys unique)
+    fedci check                 validate every catalog dataset (same as `fedcore check`)
     fedci catalog               coverage table for every dataset
     fedci sql "SELECT ..."      run SQL against the catalog views
-    fedci run q1 [k=v ...]      run a question's pipeline, saving to results/
+    fedci run q1 [k=v ...]      run a question's pipeline, saving to dml/results/
     fedci runs [q1]             list saved runs
     fedci app                   launch the research viewer
     fedci serve [--no-build] [--no-open] [--rebuild] [--port N]
@@ -17,7 +17,7 @@ import sys
 
 import pandas as pd
 
-from fedci.config import ROOT
+from fedci.config import FRONTEND, RESULTS, ROOT
 
 
 def _print(df: pd.DataFrame) -> None:
@@ -26,7 +26,7 @@ def _print(df: pd.DataFrame) -> None:
 
 
 def cmd_check(_) -> int:
-    from fedci.data import catalog, check
+    from fedcore.data import catalog, check
     bad = 0
     for ds in catalog().values():
         problems = check(ds)
@@ -39,35 +39,35 @@ def cmd_check(_) -> int:
 
 
 def cmd_catalog(_) -> int:
-    from fedci.data import coverage
+    from fedcore.data import coverage
     _print(coverage())
     return 0
 
 
 def cmd_sql(a) -> int:
-    from fedci.data import query
+    from fedcore.data import query
     _print(query(a.query))
     return 0
 
 
 def cmd_run(a) -> int:
     from fedci.questions import pipeline
-    from fedci.results import ResultStore
+    from fedcore.results import ResultStore
     params = dict(p.split("=", 1) for p in a.params)
-    run = pipeline(a.question).run(ResultStore(), **params)
+    run = pipeline(a.question).run(ResultStore(RESULTS), **params)
     if run is not None:
         print(f"saved {run.path}")
     return 0
 
 
 def cmd_runs(a) -> int:
-    from fedci.results import ResultStore
-    _print(ResultStore().summary(a.question))
+    from fedcore.results import ResultStore
+    _print(ResultStore(RESULTS).summary(a.question))
     return 0
 
 
 def cmd_app(_) -> int:
-    return subprocess.call([sys.executable, "-m", "streamlit", "run", str(ROOT / "src" / "frontend" / "streamlit" / "Home.py")])
+    return subprocess.call([sys.executable, "-m", "streamlit", "run", str(FRONTEND / "streamlit" / "Home.py")], cwd=ROOT)
 
 
 def cmd_serve(a) -> int:

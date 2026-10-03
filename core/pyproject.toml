@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "fedcore"
+version = "0.1.0"
+description = "Shared data layer: dataset catalog, SQL views, meeting-level splits, results store, question definitions."
+requires-python = ">=3.11"
+dependencies = [
+    "pandas>=2.2",
+    "numpy>=1.26",
+    "duckdb>=1.0",
+    "pyyaml>=6",
+    "pyarrow>=15",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "plotly>=5.20"]
+ingest = ["requests", "openpyxl", "yfinance", "beautifulsoup4", "lxml"]
+
+[project.scripts]
+fedcore = "fedcore.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["fedcore*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

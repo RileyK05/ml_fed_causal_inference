@@ -1,13 +1,9 @@
-"""The contract every question package follows.
+"""QuestionSpec: what a question asks, its estimand and its currency (effective n).
 
-A question package (fedci/questions/qN_<slug>/) contains:
-    spec.py      SPEC: QuestionSpec -- what is asked, the estimand, the currency (effective n)
-    pipeline.py  run(store, **params) -- computes the answer and saves it as a Run via the
-                 ResultStore. Everything it needs comes from fedci.data; everything it
-                 produces goes to the store. Nothing else is written anywhere.
-
-Keep modelling code for a question inside its package (add modules freely: features.py,
-benchmark.py, models/, ...). Code shared by 2+ questions moves to fedci/eval or fedci/data.
+Definitions live here (fedcore/questions/qN_<slug>.py). Pipelines live in the project that
+answers the question and follow one contract: run(store, **params) computes the answer and
+saves it as a Run via a ResultStore rooted in that project's results/ folder. Inputs come from
+fedcore.data; nothing else is written anywhere.
 """
 from __future__ import annotations
 

@@ -3,7 +3,7 @@
 Each dataset is exposed as a view with its catalog name, reading the file in place (no
 copy, no server). Example:
 
-    from fedci.data import query
+    from fedcore.data import query
     query("SELECT announcement_date, MP1, ret_XLF FROM event_study_table WHERE ABS(MP1) > 0.05")
 """
 from __future__ import annotations
@@ -11,7 +11,7 @@ from __future__ import annotations
 import duckdb
 import pandas as pd
 
-from fedci.data.catalog import catalog
+from fedcore.data.catalog import catalog
 
 
 def connect() -> duckdb.DuckDBPyConnection:

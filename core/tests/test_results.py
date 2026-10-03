@@ -2,8 +2,8 @@ import pandas as pd
 import plotly.graph_objects as go
 import pytest
 
-from fedci.questions import specs
-from fedci.results import ResultStore
+from fedcore.questions import specs
+from fedcore.results import ResultStore
 
 
 def test_save_and_reload_roundtrip(tmp_path):

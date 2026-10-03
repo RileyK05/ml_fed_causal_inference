@@ -1,24 +1,18 @@
-"""Registry of the five project questions (docs/question.md)."""
+"""Pipelines for the questions this project answers: Q1 (built) and Q2 (parked stub).
+Question definitions live in fedcore.questions."""
 from importlib import import_module
 
-from fedci.questions.base import STATUSES, QuestionSpec
+from fedcore.questions import specs
 
-PACKAGES = ["q1_total_effect", "q2_channels", "q3_susceptibility", "q4_gap", "q5_strategy"]
-
-
-def specs() -> dict[str, QuestionSpec]:
-    """{"Q1": QuestionSpec, ...} in question order."""
-    out = {}
-    for pkg in PACKAGES:
-        spec = import_module(f"fedci.questions.{pkg}.spec").SPEC
-        out[spec.id] = spec
-    return out
+PACKAGES = {"Q1": "q1_total_effect", "Q2": "q2_channels"}
 
 
 def pipeline(qid: str):
     """The pipeline module for a question id, e.g. pipeline("Q1").run(store)."""
-    spec = specs()[qid.upper()]
-    return import_module(f"fedci.questions.{spec.key}.pipeline")
+    qid = qid.upper()
+    if qid not in PACKAGES:
+        raise KeyError(f"{qid} is not a DML question; the dml project implements {list(PACKAGES)}")
+    return import_module(f"fedci.questions.{PACKAGES[qid]}.pipeline")
 
 
-__all__ = ["QuestionSpec", "STATUSES", "specs", "pipeline", "PACKAGES"]
+__all__ = ["PACKAGES", "pipeline", "specs"]

@@ -1,6 +1,6 @@
 """Shared plotly figure builders for Q1 results (fedci/questions/q1_total_effect + the API).
 
-Palette constants are copied from the legacy viewer (src/frontend/streamlit/_common.py)
+Palette constants are copied from the legacy viewer (dml/frontend/streamlit/_common.py)
 so backend figures do not import from the Streamlit folder.
 """
 from __future__ import annotations

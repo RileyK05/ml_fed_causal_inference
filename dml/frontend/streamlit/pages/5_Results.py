@@ -3,12 +3,13 @@ import _common as c  # noqa: I001
 
 import streamlit as st
 
-from fedci.results import ROLES, ResultStore
+from fedci.config import RESULTS
+from fedcore.results import ROLES, ResultStore
 
 c.page("Results", ":material/lab_profile:")
 st.title("Results")
 
-store = ResultStore()
+store = ResultStore(RESULTS)
 all_runs = store.runs()
 if not all_runs:
     st.info("No runs saved yet. Pipelines save through ResultStore.save(); see src/backend/fedci/results/store.py.",

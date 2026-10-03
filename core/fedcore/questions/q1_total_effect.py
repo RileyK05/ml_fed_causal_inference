@@ -1,4 +1,4 @@
-from fedci.questions.base import QuestionSpec
+from fedcore.questions.base import QuestionSpec
 
 SPEC = QuestionSpec(
     id="Q1",

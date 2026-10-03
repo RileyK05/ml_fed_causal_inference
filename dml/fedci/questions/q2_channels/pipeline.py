@@ -1,8 +1,8 @@
-"""Pipeline for this question. See spec.py for what it must answer and fedci/questions/base.py
-for the contract. Run with:  fedci run q2"""
-from fedci.data import load, meetings, event_panel  # noqa: F401
-from fedci.results import ResultStore
-from fedci.questions.q2_channels.spec import SPEC
+"""Pipeline for Q2 (parked). Definition: fedcore/questions/q2_channels.py.
+Run with:  fedci run q2"""
+from fedcore.data import load, meetings, event_panel  # noqa: F401
+from fedcore.results import ResultStore
+from fedcore.questions.q2_channels import SPEC
 
 
 def run(store: ResultStore, **params):

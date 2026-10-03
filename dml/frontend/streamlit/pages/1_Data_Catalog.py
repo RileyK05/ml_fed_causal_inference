@@ -7,7 +7,7 @@ import streamlit as st
 c.page("Data catalog", ":material/database:")
 st.title("Data catalog")
 st.caption("Everything registered in data/catalog.yaml. Add a dataset there and it appears here, "
-           "in fedci.data.load(), and as a SQL view.")
+           "in fedcore.data.load(), and as a SQL view.")
 
 cat = c.data.catalog()
 layer = st.segmented_control("Layer", ["all", *c.LAYER_ORDER], default="all")

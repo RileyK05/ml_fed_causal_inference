@@ -4,15 +4,16 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-SRC = Path(__file__).resolve().parents[2] / "backend"
-if str(SRC) not in sys.path:  # works even if the package was not pip-installed
-    sys.path.insert(0, str(SRC))
+_DML = Path(__file__).resolve().parents[2]          # dml/
+for _pkg_root in (_DML, _DML.parent / "core"):       # works even if not pip-installed
+    if str(_pkg_root) not in sys.path:
+        sys.path.insert(0, str(_pkg_root))
 
 import pandas as pd  # noqa: E402
 import plotly.graph_objects as go  # noqa: E402
 import streamlit as st  # noqa: E402
 
-from fedci import data  # noqa: E402
+from fedcore import data  # noqa: E402
 
 # Reference palette (validated): categorical slots in fixed order, light and dark steps.
 CATEGORICAL = {

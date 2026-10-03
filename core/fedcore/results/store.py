@@ -19,9 +19,8 @@ from pathlib import Path
 
 import pandas as pd
 
-from fedci.config import RESULTS
-from fedci.data.loaders import fingerprint
-from fedci.questions.base import QuestionSpec
+from fedcore.data.loaders import fingerprint
+from fedcore.questions.base import QuestionSpec
 
 ROLES = ("primary", "robustness", "exploratory")
 
@@ -48,7 +47,8 @@ def _slug(s: str) -> str:
 
 
 class ResultStore:
-    def __init__(self, root: Path = RESULTS):
+    def __init__(self, root: Path):
+        """root: the owning project's results folder (e.g. dml/results). Each project keeps its own."""
         self.root = Path(root)
 
     def save(

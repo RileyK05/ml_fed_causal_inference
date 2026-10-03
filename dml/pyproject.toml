@@ -5,16 +5,12 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "fedci"
 version = "0.1.0"
-description = "FOMC causal inference research framework: data layer, question scaffolds, results store, viewer."
+description = "DML project: Q1 aggregate equity response to Fed surprises, plus the web app and viewer."
 requires-python = ">=3.11"
 dependencies = [
-    "pandas>=2.2",
-    "numpy>=1.26",
-    "duckdb>=1.0",
-    "pyyaml>=6",
+    "fedcore",
     "streamlit>=1.40",
     "plotly>=5.20",
-    "pyarrow>=15",
     "fastapi>=0.115",
     "uvicorn>=0.30",
     "seaborn>=0.13",
@@ -22,14 +18,13 @@ dependencies = [
 
 [project.optional-dependencies]
 model = ["statsmodels>=0.14", "scikit-learn>=1.4"]
-ingest = ["requests", "openpyxl", "yfinance", "beautifulsoup4", "lxml"]
 dev = ["pytest>=8"]
 
 [project.scripts]
 fedci = "fedci.cli:main"
 
 [tool.setuptools.packages.find]
-where = ["src/backend"]
+include = ["fedci*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

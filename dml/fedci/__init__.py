@@ -1,2 +1,2 @@
-"""fedci: research framework for the FOMC causal inference project (see docs/question.md)."""
+"""fedci: the DML project (Q1 aggregate response), its web app and viewer. Data comes from fedcore."""
 __version__ = "0.1.0"

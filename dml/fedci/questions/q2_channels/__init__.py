@@ -1,1 +1,1 @@
-from fedci.questions.q2_channels.spec import SPEC  # noqa: F401
+from fedcore.questions.q2_channels import SPEC  # noqa: F401

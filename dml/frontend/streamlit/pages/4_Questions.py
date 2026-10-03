@@ -3,8 +3,9 @@ import _common as c  # noqa: I001
 
 import streamlit as st
 
-from fedci.questions import specs
-from fedci.results import ResultStore
+from fedcore.questions import specs
+from fedci.config import RESULTS
+from fedcore.results import ResultStore
 
 c.page("Questions", ":material/help:")
 st.title("Questions")
@@ -46,7 +47,7 @@ if spec.data_needed:
         st.markdown(f"- :material/pending: {item}")
 
 st.subheader("Runs")
-runs = ResultStore().summary(spec.id)
+runs = ResultStore(RESULTS).summary(spec.id)
 if runs.empty:
     st.caption(f"No runs yet. Implement run() in src/backend/fedci/questions/{spec.key}/pipeline.py.")
 else:

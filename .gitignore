@@ -16,7 +16,7 @@ dist/
 
 # Node / web app
 node_modules/
-src/frontend/dist/
+dml/frontend/dist/
 npm-debug.log*
 yarn-error.log*
 

@@ -1,5 +1,5 @@
 """Look at any meeting in event time: its surprise, the day-0 cross-section, and the path
-around it. A viewer over fedci.data.event_panel -- no estimation happens here."""
+around it. A viewer over fedcore.data.event_panel -- no estimation happens here."""
 import _common as c  # noqa: I001
 
 import pandas as pd

@@ -1,7 +1,7 @@
 """One-command launch: build the web app when needed, then serve API + SPA.
 
 `fedci serve` is the whole launch (start.cmd at the repo root wraps it for double-click).
-The SPA in src/frontend/dist is rebuilt with npm only when it is missing or older than
+The SPA in dml/frontend/dist is rebuilt with npm only when it is missing or older than
 the frontend sources, so a normal launch is a no-op build-wise. If the port already
 answers, the existing server is reused and the browser is just pointed at it.
 """
@@ -15,12 +15,12 @@ import time
 import webbrowser
 from pathlib import Path
 
-from fedci.config import ROOT
+from fedci.config import FRONTEND
 
-WEB_DIR = ROOT / "src" / "frontend"
+WEB_DIR = FRONTEND
 WEB_DIST = WEB_DIR / "dist"
 
-BUILD_HINT = ("the web app was not built; run `npm install && npm run build` in src/frontend "
+BUILD_HINT = ("the web app was not built; run `npm install && npm run build` in dml/frontend "
               "(needs Node.js), or pass --no-build to serve the API only")
 
 
@@ -55,7 +55,7 @@ def build_web() -> None:
         print("building web app (npm run build) ...", flush=True)
         subprocess.run([npm, "run", "build"], cwd=WEB_DIR, check=True)
     except subprocess.CalledProcessError as exc:
-        raise RuntimeError(f"web build failed ({exc}); run it manually in src/frontend") from exc
+        raise RuntimeError(f"web build failed ({exc}); run it manually in dml/frontend") from exc
 
 
 def port_in_use(host: str, port: int, timeout: float = 1.0) -> bool:

@@ -33,7 +33,7 @@ from statistics import NormalDist
 import numpy as np
 import pandas as pd
 
-from fedci.eval.protocol import Fold, meeting_bootstrap, walk_forward
+from fedcore.protocol import Fold, meeting_bootstrap, walk_forward
 
 NUISANCES = ("ridge", "enet", "rf")
 
