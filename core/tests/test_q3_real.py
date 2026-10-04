@@ -184,3 +184,23 @@ def test_holdout_inputs_splice_yfinance_after_the_crsp_end(monkeypatch):
 
     ends = ext.members.set_index("permno")["mbrenddt"]
     assert ends[[1, 2]].isna().all() and ends[3] == end
+
+
+def test_cached_panel_loads_without_raw_inputs(tmp_path, monkeypatch):
+    """A remote GPU box gets only processed/q3_panel/: the cache must load as is."""
+    import json
+
+    from fedcore.q3 import real
+
+    panel, rows, _ = build_panel(_inputs())
+    for name in real._ARRAYS:
+        np.save(tmp_path / f"{name}.npy", getattr(panel, name))
+    rows.to_parquet(tmp_path / "rows.parquet", index=False)
+    (tmp_path / "meta.json").write_text(json.dumps({"inputs": {"crsp_daily": "abc"}}), encoding="utf-8")
+    monkeypatch.setattr(real, "CACHE", tmp_path)
+    monkeypatch.setattr(real, "_fingerprints", lambda names: None)
+    got, got_rows, meta = real.load_real_panel()
+    assert np.array_equal(got.target, panel.target) and len(got_rows) == len(rows)
+    assert meta["inputs"] == {"crsp_daily": "abc"}
+    with pytest.raises(FileNotFoundError):
+        real.load_real_panel(rebuild=True)

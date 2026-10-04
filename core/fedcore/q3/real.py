@@ -28,7 +28,7 @@ import numpy as np
 import pandas as pd
 
 from fedcore.config import PROCESSED
-from fedcore.data import load
+from fedcore.data import get, load
 from fedcore.data.loaders import fingerprint
 from fedcore.q3.contracts import BETA63, CHANNELS, DLOGVOL, L, Q3Panel, RET, RET_REL, RVOL21
 from fedcore.q3.synthetic import (
@@ -463,13 +463,15 @@ def load_holdout_panel(rebuild: bool = False) -> tuple[Q3Panel, pd.DataFrame, di
     the headline evaluation. History windows mix CRSP (2025) and yfinance (2026) days.
     """
     meta_file = HOLDOUT_CACHE / "meta.json"
-    prints = {name: fingerprint(name) for name in HOLDOUT_INPUTS}
+    prints = _fingerprints(HOLDOUT_INPUTS)
+    if prints is None:
+        if not meta_file.exists() or rebuild:
+            raise FileNotFoundError(f"no raw inputs to build from and no cached panel in {HOLDOUT_CACHE}")
+        return _load_cache(HOLDOUT_CACHE)
     if not rebuild and meta_file.exists():
         meta = json.loads(meta_file.read_text(encoding="utf-8"))
         if meta.get("inputs") == prints and meta.get("build_version") == BUILD_VERSION:
-            panel = Q3Panel(**{name: np.load(HOLDOUT_CACHE / f"{name}.npy") for name in _ARRAYS})
-            panel.validate()
-            return panel, pd.read_parquet(HOLDOUT_CACHE / "rows.parquet"), meta
+            return _load_cache(HOLDOUT_CACHE)
     base = read_inputs()
     crsp_end = pd.Timestamp(base.daily["dlycaldt"].max())
     full, rows, notes = build_panel(holdout_inputs(base))
@@ -491,21 +493,37 @@ def load_holdout_panel(rebuild: bool = False) -> tuple[Q3Panel, pd.DataFrame, di
     return panel, rows, meta
 
 
-def _fingerprints() -> dict[str, str]:
-    return {name: fingerprint(name) for name in INPUTS}
+def _fingerprints(names: tuple[str, ...]) -> dict[str, str] | None:
+    """Input fingerprints, or None when the raw inputs are absent (e.g. on a remote GPU box
+    that only received the cached arrays)."""
+    if not all(get(name).exists for name in names):
+        return None
+    return {name: fingerprint(name) for name in names}
+
+
+def _load_cache(folder) -> tuple[Q3Panel, pd.DataFrame, dict]:
+    panel = Q3Panel(**{name: np.load(folder / f"{name}.npy") for name in _ARRAYS})
+    panel.validate()
+    meta = json.loads((folder / "meta.json").read_text(encoding="utf-8"))
+    return panel, pd.read_parquet(folder / "rows.parquet"), meta
 
 
 def load_real_panel(rebuild: bool = False) -> tuple[Q3Panel, pd.DataFrame, dict]:
-    """The cached real panel, rebuilt when missing, forced, or when any input file changed."""
+    """The cached real panel, rebuilt when missing, forced, or when any input file changed.
+
+    Without the raw inputs (a remote GPU box given only ``processed/q3_panel/``) the cache
+    is used as is; its ``meta["inputs"]`` still records the data it was built from.
+    """
     meta_file = CACHE / "meta.json"
-    prints = _fingerprints()
+    prints = _fingerprints(INPUTS)
+    if prints is None:
+        if not meta_file.exists() or rebuild:
+            raise FileNotFoundError(f"no raw inputs to build from and no cached panel in {CACHE}")
+        return _load_cache(CACHE)
     if not rebuild and meta_file.exists():
         meta = json.loads(meta_file.read_text(encoding="utf-8"))
         if meta.get("inputs") == prints and meta.get("build_version") == BUILD_VERSION:
-            arrays = {name: np.load(CACHE / f"{name}.npy") for name in _ARRAYS}
-            panel = Q3Panel(**arrays)
-            panel.validate()
-            return panel, pd.read_parquet(CACHE / "rows.parquet"), meta
+            return _load_cache(CACHE)
     panel, rows, notes = build_panel(read_inputs())
     CACHE.mkdir(parents=True, exist_ok=True)
     for name in _ARRAYS:
