@@ -13,7 +13,6 @@ core/
     ingest/            future data pulls (WRDS etc.)
     cli.py             fedcore check | catalog | sql
   tests/               includes test_isolation.py: projects never import each other
-  docs/                HANDOFF-q3-foundation.md (shared Q3 contract, see below)
 ```
 
 ```powershell
@@ -27,5 +26,5 @@ note in `data/PROVENANCE.md` + `fedcore check`.
 
 The Q3 shared contract (panel format, synthetic data, scoring harness) that encoder/ and cde/
 both plug into will live here as `fedcore.q3`. It's specified in
-[docs/HANDOFF-q3-foundation.md](docs/HANDOFF-q3-foundation.md), so both models are scored by
+[docs/core/HANDOFF.md](../docs/core/HANDOFF.md), so both models are scored by
 the same code.

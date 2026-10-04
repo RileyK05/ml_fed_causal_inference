@@ -1,13 +1,13 @@
 # Package 01: patch-transformer history encoder
 
-**Goal:** implement the history encoder from `encoder/docs/transformer.md` as a `HistoryEncoder`
+**Goal:** implement the history encoder from `docs/encoder/transformer.md` as a `HistoryEncoder`
 (package 00's contract), add masked-patch pre-training, and test on the synthetic panel
 whether it beats the baselines and `summary_nn`. Find out whether it actually learns the
 sequence-dependent part of the planted b.
 
-Prerequisite: package 00 is merged. Read first: `AGENTS.md`, all of `encoder/docs/transformer.md`,
+Prerequisite: package 00 is merged. Read first: `AGENTS.md`, all of `docs/encoder/transformer.md`,
 `contracts.py`, `model.py`, `train.py` and `evaluate.py` in `core/fedcore/q3/`, and
-`core/docs/reports/q3-foundation-report.md` (the baseline numbers to beat).
+`docs/reports/core-report.md` (the baseline numbers to beat).
 
 ## Files you own
 
@@ -29,7 +29,7 @@ change, request it in your report. Install with
 ## 1. The encoder (`encoder_transformer.py`)
 
 `PatchTransformerEncoder(HistoryEncoder)`, with the v1 configuration from
-`encoder/docs/transformer.md` section 2:
+`docs/encoder/transformer.md` section 2:
 
 | Part | v1 setting |
 |---|---|
@@ -53,7 +53,7 @@ min-history rule), return zeros rather than NaN, and assert in tests that it doe
 
 ## 2. Pre-training (`pretrain.py`)
 
-Masked patch reconstruction (`encoder/docs/transformer.md` section 8):
+Masked patch reconstruction (`docs/encoder/transformer.md` section 8):
 
 - **Data:** `synthetic.make_pretrain_windows(n_windows=20000, seed)`. These are ordinary-day
   windows, with no meetings or targets. Use the scaler fitted on these windows (it's a separate
@@ -74,7 +74,7 @@ Masked patch reconstruction (`encoder/docs/transformer.md` section 8):
 Chronology note for later real data: a pre-training checkpoint may only be used for test folds
 that start after the last day in its corpus. On synthetic data, generate the pre-training
 windows from a separate seed and note in the report that real data will need per-fold
-checkpoints (`encoder/docs/transformer.md` section 11).
+checkpoints (`docs/encoder/transformer.md` section 11).
 
 ## 3. Arms (defined in `fedenc/run.py` as `ARMS`)
 
@@ -113,7 +113,7 @@ full fusion (fundamentals and context zeroed).
 **M5: diagnostics, cheap.** Linear probes from h to trailing volatility, beta63 and drawdown
 (fit on train meetings, score on test), plus one attention-map figure for a row with the planted
 pattern. State plainly in the report that attention maps are not explanations
-(`encoder/docs/transformer.md` section 13).
+(`docs/encoder/transformer.md` section 13).
 
 ## 5. Budget and practicalities
 
@@ -128,7 +128,7 @@ pattern. State plainly in the report that attention maps are not explanations
 - M1-M3 complete; M4-M5 attempted.
 - Tests pass; `fedcore check`, `pytest core` and `pytest encoder` are green.
 - Runs saved to `encoder/results/` through `ResultStore` (`role="exploratory"`).
-- `encoder/docs/report.md` contains: the results table (all arms + baselines, easy and
+- `docs/reports/encoder-report.md` contains: the results table (all arms + baselines, easy and
   realistic, mean ± sd over 3 seeds), the pre-training curves, the ablation table, the probe
   results, deviations, requested contract changes, and an honest verdict on whether the
   transformer earns its complexity on this synthetic task.

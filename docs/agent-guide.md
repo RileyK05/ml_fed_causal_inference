@@ -1,13 +1,13 @@
-# Q3 handoff: how to run the agents
+# Agent guide: running the Q3 bots
 
 Three briefs, one per agent. The shared contract goes first; then the encoder and CDE build
 in parallel against it, and the results are reviewed together.
 
 | Brief | What it builds | Where | Depends on |
 |---|---|---|---|
-| [core/docs/HANDOFF-q3-foundation.md](../core/docs/HANDOFF-q3-foundation.md) | Panel contract, synthetic data, heads, trainer, scoring harness, baselines | `core/fedcore/q3/` | Nothing |
-| [encoder/HANDOFF.md](../encoder/HANDOFF.md) | Patch-transformer encoder + masked-patch pre-training | `encoder/` | Foundation merged |
-| [cde/HANDOFF.md](../cde/HANDOFF.md) | Signature + ridge, Neural CDE encoder | `cde/` | Foundation merged |
+| [docs/core/HANDOFF.md](core/HANDOFF.md) | Panel contract, synthetic data, heads, trainer, scoring harness, baselines | `core/fedcore/q3/` | Nothing |
+| [docs/encoder/HANDOFF.md](encoder/HANDOFF.md) | Patch-transformer encoder + masked-patch pre-training | `encoder/` | Foundation merged |
+| [docs/cde/HANDOFF.md](cde/HANDOFF.md) | Signature + ridge, Neural CDE encoder | `cde/` | Foundation merged |
 
 **The foundation must be merged before the encoder and CDE agents start.** It defines the data
 shapes, the encoder interface, the loss and the scoring, so both models are judged by the same

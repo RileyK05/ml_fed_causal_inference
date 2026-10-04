@@ -1,0 +1,57 @@
+{
+  "question": "Q3",
+  "question_key": "q3_susceptibility",
+  "name": "lgbm",
+  "run_id": "20261003-173343_lgbm",
+  "role": "exploratory",
+  "created": "2026-10-03T17:33:43",
+  "params": {
+    "data": "synthetic",
+    "noise": "easy",
+    "arm": "lgbm",
+    "seeds": [
+      0,
+      1,
+      2
+    ],
+    "min_train": 80,
+    "test_size": 16,
+    "window_shrunk": false,
+    "panel_seed": 0,
+    "n_firms": 200,
+    "n_meetings": 160,
+    "n_rows": 32000,
+    "fit_kwargs": {}
+  },
+  "metrics": {
+    "n_seeds": 3,
+    "n_test_meetings": 80,
+    "mse_per_meeting": 0.05866992301436511,
+    "mse_per_meeting_std": 0.00013920793894048498,
+    "centered_mse": 0.051571971952555,
+    "centered_mse_std": 0.00014185048671023687,
+    "rank_ic": 0.6316277535339182,
+    "rank_ic_std": 0.0010977226025304643,
+    "rank_ic_defined_frac": 1.0,
+    "rank_ic_defined_frac_std": 0.0,
+    "b_corr": 0.8793174023781569,
+    "b_corr_std": 0.0005924720912837318,
+    "b_rmse": 0.4416135875367882,
+    "b_rmse_std": 0.000986913404343597,
+    "a_rmse": 0.2324274174645553,
+    "a_rmse_std": 0.0008816095730920351
+  },
+  "datasets": {},
+  "tables": [
+    "predictions",
+    "folds",
+    "curves",
+    "by-seed"
+  ],
+  "figures": [],
+  "notes": "Synthetic Q3 panel. mse_per_meeting is the mean of within-meeting MSE. rank_ic is null when a meeting has fewer than 3 firms or a constant prediction; rank_ic_defined_frac is the share of test meetings where it is defined. noise=easy, panel_seed=0, min_train=80, test_size=16, shrunk=False.",
+  "env": {
+    "python": "3.12.10",
+    "pandas": "3.0.6"
+  }
+}

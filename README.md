@@ -9,8 +9,8 @@ Three isolated projects on one shared data layer:
 |---|---|---|
 | [core/](core/README.md) | Shared data layer: datasets, `load()`/SQL, walk-forward splits, results store, question definitions | `fedcore check` |
 | [dml/](dml/README.md) | Q1: aggregate response via DML, plus the web app and viewer | `dml\start.cmd` |
-| [encoder/](encoder/README.md) | Q3: patch-transformer firm-sensitivity model | [encoder/HANDOFF.md](encoder/HANDOFF.md) |
-| [cde/](cde/README.md) | Q3: Neural CDE firm-sensitivity model | [cde/HANDOFF.md](cde/HANDOFF.md) |
+| [encoder/](encoder/README.md) | Q3: patch-transformer firm-sensitivity model | [docs/encoder/HANDOFF.md](docs/encoder/HANDOFF.md) |
+| [cde/](cde/README.md) | Q3: Neural CDE firm-sensitivity model | [docs/cde/HANDOFF.md](docs/cde/HANDOFF.md) |
 
 Projects import `core` and never each other (enforced by `core/tests/test_isolation.py`).
 

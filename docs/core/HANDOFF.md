@@ -5,7 +5,7 @@ panel with known answers, the shared response head and loss, a meeting-batched t
 walk-forward scoring harness and the non-neural baselines. Packages 01 (encoder) and 02
 (Neural CDE) depend on this exact API. Keep it small, typed and boring.
 
-Read first: `AGENTS.md`, `docs/question.md` (Q3 section), `encoder/docs/transformer.md`
+Read first: `AGENTS.md`, `docs/question.md` (Q3 section), `docs/encoder/transformer.md`
 sections 1, 6, 9-12, `core/fedcore/protocol.py`, `core/fedcore/results/store.py`.
 
 ## Where it lives and why
@@ -128,7 +128,7 @@ They are the "engineered characteristics" the deep models must beat.
 ## 4. `heads.py` and `model.py`
 
 ```python
-class ShockHead(nn.Module):            # linear readout, per encoder/docs/transformer.md section 6A
+class ShockHead(nn.Module):            # linear readout, per docs/encoder/transformer.md section 6A
     def __init__(self, z_dim): self.a = nn.Linear(z_dim, 1); self.b = nn.Linear(z_dim, 1)
     def forward(self, z, s): a = self.a(z).squeeze(-1); b = self.b(z).squeeze(-1); return a + b * s, a, b
 
@@ -151,7 +151,7 @@ max_epochs=100, patience=10, seed=0, freeze_encoder=False) -> FitResult`
   only, clipped at ±5. Unobserved entries are then set to 0. The fitted scaler is stored and
   reused for validation and test.
 - **Batches are whole meetings** (all firms of 1-4 meetings per batch).
-- **Loss = mean over meetings of the per-meeting MSE** (`encoder/docs/transformer.md` section 10). Every
+- **Loss = mean over meetings of the per-meeting MSE** (`docs/encoder/transformer.md` section 10). Every
   meeting weighs the same regardless of firm count.
 - `encoder_lr` lets packages 01 and 02 use a smaller learning rate for the encoder.
   `freeze_encoder=True` trains only the branches, fusion and head.
@@ -229,4 +229,4 @@ There's no central arm registry (that would make core import the projects). Inst
   (`core/tests/test_isolation.py` included).
 - Report a table of all baselines on `noise="easy"` and `noise="realistic"`, 3 seeds: the
   numbers packages 01 and 02 have to beat.
-- The report is written to `core/docs/reports/q3-foundation-report.md`.
+- The report is written to `docs/reports/core-report.md`.

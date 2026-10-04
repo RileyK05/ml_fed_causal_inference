@@ -9,9 +9,9 @@ package 00's contract:
 Then test on the synthetic panel whether either beats the baselines and `summary_nn`, and
 whether the neural version beats its own linear cousin.
 
-Prerequisite: package 00 is merged. Read first: `AGENTS.md`, `encoder/docs/transformer.md` sections 1,
+Prerequisite: package 00 is merged. Read first: `AGENTS.md`, `docs/encoder/transformer.md` sections 1,
 6, 9-12, `contracts.py`, `model.py`, `train.py` and `evaluate.py` in `core/fedcore/q3/`, and
-`core/docs/reports/q3-foundation-report.md` (the baseline numbers to beat). Background: Kidger et al.
+`docs/reports/core-report.md` (the baseline numbers to beat). Background: Kidger et al.
 (2020), *Neural Controlled Differential Equations for Irregular Time Series*, and the
 `torchcde` README.
 
@@ -130,7 +130,7 @@ stability notes (did the solver ever blow up? Was gradient clipping needed beyon
 - M1-M3 complete; M4-M5 attempted.
 - Tests pass; `fedcore check`, `pytest core` and `pytest cde` are green.
 - Runs saved to `cde/results/` through `ResultStore` (`role="exploratory"`).
-- `cde/docs/report.md` contains: the results table (both arms + baselines, easy and
+- `docs/reports/cde-report.md` contains: the results table (both arms + baselines, easy and
   realistic, mean ± sd over 3 seeds), the ablation table, the speed profile, deviations,
   requested contract changes, and an honest verdict: does the CDE earn its cost relative to
   `sig_ridge` and, at review time, relative to the transformer?

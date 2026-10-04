@@ -10,9 +10,9 @@ the source of truth.
 |---|---|---|
 | `core/` | `fedcore` | Shared layer: `data/` (catalog, raw/interim/processed), data access, `protocol.py` (walk-forward, meeting bootstrap), `results/` (ResultStore), `questions/` (the five question definitions) |
 | `dml/` | `fedci` | Q1 DML project: pipelines, `eval/dml.py`, FastAPI backend, `frontend/` (React app + Streamlit viewer), `results/` |
-| `encoder/` | `fedenc` | Q3 patch-transformer project. Build spec: `encoder/HANDOFF.md`; design: `encoder/docs/transformer.md` |
-| `cde/` | `fedcde` | Q3 Neural CDE project. Build spec: `cde/HANDOFF.md` |
-| `docs/` | | Project-wide spec only (`question.md`, `methods.md`, `q3-handoff.md`) |
+| `encoder/` | `fedenc` | Q3 patch-transformer project. Build spec: `docs/encoder/HANDOFF.md`; design: `docs/encoder/transformer.md` |
+| `cde/` | `fedcde` | Q3 Neural CDE project. Build spec: `docs/cde/HANDOFF.md` |
+| `docs/` | | **All docs.** Project-wide spec at the top (`question.md`, `methods.md`, `agent-guide.md`); one subfolder per project (`docs/core/`, `docs/dml/`, `docs/encoder/`, `docs/cde/`) with its HANDOFF brief and design notes; agent reports in `docs/reports/`. Project folders hold only a README |
 
 **Isolation rule:** projects import `fedcore` and never each other; `fedcore` imports no
 project. `core/tests/test_isolation.py` enforces it. Code needed by 2+ projects goes in

@@ -3,7 +3,7 @@
 **Companion to:** [question.md](question.md), Q-spec v1.1 (2026-09-25).
 **Status:** Candidate models for discussion; only the project structure is settled.
 **Historical reference:** [Original broad catalog](archive/methods-v1.md), superseded.
-**Q3 design note:** [Transformer architecture, pretraining and fine-tuning options](../encoder/docs/transformer.md).
+**Q3 design note:** [Transformer architecture, pretraining and fine-tuning options](encoder/transformer.md).
 
 The active chain is Q1 -> Q3 -> Q4 -> Q5. Q3 is the main architecture research task.
 Q2 is parked. More elaborate models must earn their place on earlier validation data.

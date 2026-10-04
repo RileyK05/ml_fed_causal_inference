@@ -2,8 +2,8 @@
 
 **Version:** 0.1 (2026-09-25)  
 **Status:** Research design and implementation options; no trained model or empirical result yet.  
-**Parent specification:** [question.md](../../docs/question.md), Q-spec v1.1.  
-**Other methods:** [methods.md](../../docs/methods.md).
+**Parent specification:** [question.md](../question.md), Q-spec v1.1.  
+**Other methods:** [methods.md](../methods.md).
 
 The main research question is whether a learned representation of firm state predicts
 responses to monetary-policy surprises better than explicit financial characteristics.

@@ -6,7 +6,6 @@ Same contract and scoring as the encoder, so the two are directly comparable.
 
 ```text
 cde/
-  HANDOFF.md        build spec for this project
   fedcde/           the package (imports fedcore only)
   tests/
   results/          this project's saved runs
@@ -17,4 +16,4 @@ cde/
 .venv\Scripts\python -m pytest cde
 ```
 
-Prerequisite: the shared Q3 contract, `core/docs/HANDOFF-q3-foundation.md`.
+Prerequisite: the shared Q3 contract, `docs/core/HANDOFF.md`.
