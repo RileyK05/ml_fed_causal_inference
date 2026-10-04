@@ -157,19 +157,27 @@ def run_arms(
 ) -> pd.DataFrame:
     """Build one panel, score every arm, save each run, and return a comparison table.
 
-    ``data="real"`` is reserved for the firm panel that does not exist yet.
-    When ``min_train`` and ``test_size`` are left at their defaults and the panel
+    ``data="real"`` scores the WRDS firm panel (``fedcore.q3.real``); ``noise`` and
+    ``panel_kwargs`` apply to synthetic data only. When ``min_train`` and ``test_size`` are left at their defaults and the panel
     has fewer than 80 meetings, both are reduced so the small end-to-end test
     still produces a fold. The saved params record that choice.
     """
-    if data == "real":
-        raise NotImplementedError("real Q3 panel not built yet")
-    if data != "synthetic":
+    if data not in ("synthetic", "real"):
         raise ValueError(f"unknown data={data!r}")
     if not arms:
         raise ValueError("arms is empty")
-    panel_seed = int(panel_kwargs.pop("seed", 0))
-    panel = make_synthetic_panel(noise=noise, seed=panel_seed, **panel_kwargs)
+    panel_inputs: dict = {}
+    if data == "real":
+        if panel_kwargs:
+            raise ValueError(f"panel options apply to synthetic data only: {sorted(panel_kwargs)}")
+        from fedcore.q3.real import load_real_panel
+
+        panel, _, meta = load_real_panel()
+        noise, panel_seed = None, None
+        panel_inputs = meta["inputs"]
+    else:
+        panel_seed = int(panel_kwargs.pop("seed", 0))
+        panel = make_synthetic_panel(noise=noise, seed=panel_seed, **panel_kwargs)
     n_meetings = len(panel.meetings())
     mt, ts, shrunk = _resolve_window(n_meetings, min_train, test_size)
     saved: dict[str, EvalResult] = {}
@@ -190,9 +198,10 @@ def run_arms(
             "n_meetings": int(n_meetings),
             "n_rows": int(panel.target.shape[0]),
             "fit_kwargs": fit_kwargs or {},
+            "panel_inputs": panel_inputs,
         }
         notes = (
-            "Synthetic Q3 panel. mse_per_meeting is the mean of within-meeting MSE. "
+            f"{'Real WRDS' if data == 'real' else 'Synthetic'} Q3 panel. mse_per_meeting is the mean of within-meeting MSE. "
             "rank_ic is null when a meeting has fewer than 3 firms or a constant prediction; "
             "rank_ic_defined_frac is the share of test meetings where it is defined. "
             f"noise={noise}, panel_seed={panel_seed}, min_train={mt}, test_size={ts}, shrunk={shrunk}."

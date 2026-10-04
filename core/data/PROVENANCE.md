@@ -169,3 +169,11 @@ Python env: project `.venv`, see the root README.
 - **Raw is untouched:** WRDS native column names, dates stored as ISO strings. Renaming, type conversion and the point-in-time joins (fundamentals on `rdq`, sector and link on their validity dates) belong in interim.
 - **Not run:** any model or statistical test.
 
+### 7a. Derived Q3 panel (`processed/q3_panel/`, gitignored)
+- **Built by:** `fedcore.q3.real.load_real_panel()` from the section-7 tables plus `usmpd_statements`, `mps_surprises` and `treasury_1y`; cached as `.npy` arrays, `rows.parquet` (meeting, permno, gvkey, GICS sector) and `meta.json` (input fingerprints, counts, dropped meetings). Rebuilt automatically when any input file changes; a build takes about 15 seconds.
+- **Build of 2026-10-04:** 126,854 firm-meeting rows, 253 scheduled statements (1994-05-17 to 2025-12-10), 1,252 firms, 499-505 firms per meeting. 1994-02-04 and 1994-03-22 dropped: the 63-day 1-year-yield change needs history the Treasury file does not have.
+- **Definitions:** shock `s = 10 * STMT` and context = the Q1 state controls (identical to `dml` Q1) plus annualized 21-day market volatility. Target = meeting-day CRSP return in percent. Channels use the synthetic panel's own functions; where the synthetic panel falls back to a firm's true beta, the real panel uses 1.0.
+- **Point-in-time:** membership on the meeting date; fundamentals from the latest quarter with `rdq` strictly before the meeting (stale after 365 days); link and GICS valid on the meeting date.
+- **Known gaps:** GICS history starts 1999-06-30, so 1994-1998 rows have no sector (83% of rows have one); sector is row metadata, not a model input. Book-to-market reaches -78/+20 for firms with tiny or negative book equity; the trainer's median/IQR scaling clips at +/-5.
+- **Sanity check (not a model):** the meeting-average return regressed on `s` gives -1.05% per 10bp over the 253 meetings, in line with the Q1 DML estimate (-0.96).
+

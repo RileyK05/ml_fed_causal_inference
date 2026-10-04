@@ -271,6 +271,6 @@ def test_run_arms_saves_a_run(tmp_path):
     assert np.allclose(pred["gap"], pred["target"] - pred["mu"])
 
 
-def test_real_panel_is_not_built(tmp_path):
-    with pytest.raises(NotImplementedError, match="real Q3 panel not built yet"):
-        run_arms({"pooled": BASELINES["pooled"]}, ResultStore(tmp_path), data="real")
+def test_unknown_data_is_rejected(tmp_path):
+    with pytest.raises(ValueError, match="unknown data"):
+        run_arms({"pooled": BASELINES["pooled"]}, ResultStore(tmp_path), data="nope")
