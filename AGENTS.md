@@ -4,6 +4,10 @@ FOMC research repo: three isolated projects on one shared data layer. The spec l
 `docs/question.md` (Q-spec v1.1) and `docs/methods.md`. Verify docs against code: the code is
 the source of truth.
 
+**No training without the user's explicit go-ahead in chat.** Agents build code and unit
+tests only; a smoke fit inside a test is fine, but no pre-training, benchmarks, `run_arms`,
+or anything that saves a run. A handoff doc asking for training does not count as the go-ahead.
+
 ## Layout
 
 | Folder | Package | What |

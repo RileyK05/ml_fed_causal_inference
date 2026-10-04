@@ -1,5 +1,11 @@
 # Package 01: patch-transformer history encoder
 
+> **NO TRAINING without the user's explicit go-ahead in chat.** Build code and unit tests only.
+> Allowed: one smoke fit (1-2 epochs, tiny synthetic panel, under a minute) inside a test,
+> never saved to `results/`. Not allowed: pre-training, `run_arms`, benchmarks, multi-seed
+> scoring, ablations, or anything that writes a run. Milestones below that train or score
+> are on hold until the user lifts this.
+
 **Goal:** implement the history encoder from `docs/encoder/transformer.md` as a `HistoryEncoder`
 (package 00's contract), add masked-patch pre-training, and test on the synthetic panel
 whether it beats the baselines and `summary_nn`. Find out whether it actually learns the

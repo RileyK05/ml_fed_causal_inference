@@ -28,3 +28,10 @@ yarn-error.log*
 .idea/
 .DS_Store
 Thumbs.db
+
+# Model runs: large, regenerated from code. dml/results (small Q1 runs) stays tracked.
+core/results/
+encoder/results/*
+!encoder/results/README.md
+cde/results/*
+!cde/results/README.md

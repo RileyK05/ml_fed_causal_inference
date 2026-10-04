@@ -1,5 +1,11 @@
 # Package 02: signature baseline and Neural CDE history encoder
 
+> **NO TRAINING without the user's explicit go-ahead in chat.** Build code and unit tests only.
+> Allowed: one smoke fit (1-2 epochs, tiny synthetic panel, under a minute) inside a test,
+> never saved to `results/`. Not allowed: pre-training, `run_arms`, benchmarks, multi-seed
+> scoring, ablations, or anything that writes a run. Milestones below that train or score
+> are on hold until the user lifts this.
+
 **Goal:** build the continuous-time alternative to the transformer. Two arms, both plugging into
 package 00's contract:
 
