@@ -246,6 +246,47 @@ datasets:
     questions: [Q3]
     description: Historical GICS sector/group/industry codes with validity dates.
 
+  crsp_names:
+    path: raw/wrds/crsp_names.parquet
+    layer: raw
+    source: CRSP via WRDS (crsp.stksecurityinfohist)
+    grain: spell
+    date_column: secinfostartdt
+    key: [permno, secinfostartdt]
+    questions: [Q3]
+    description: Ticker, trading symbol and share class per permno over time (exact share-class ticker mapping).
+
+  # ---- 2026 holdout extension (yfinance; CRSP's annual vintage ends 2025-12-31) ----
+  wiki_sp500_constituents:
+    path: raw/wikipedia/sp500_constituents.csv
+    layer: raw
+    source: Wikipedia, List of S&P 500 companies (snapshot)
+    grain: spell
+    date_column: Date added
+    key: [Symbol]
+    questions: [Q3]
+    description: Current S&P 500 members with ticker, CIK and date added. Defines who is still a member in 2026.
+
+  yf_firm_daily:
+    path: raw/yfinance_firms/firm_daily.parquet
+    layer: raw
+    source: Yahoo Finance via yfinance (keyed by CRSP permno; gitignored)
+    grain: daily
+    date_column: date
+    key: [permno, date]
+    questions: [Q3]
+    description: Adjusted close, close and volume from 2025 for end-2025 members still in the index. 2025 is the CRSP overlap check.
+
+  yf_spy_daily:
+    path: raw/yfinance_firms/spy_daily.parquet
+    layer: raw
+    source: Yahoo Finance via yfinance
+    grain: daily
+    date_column: date
+    key: [date]
+    questions: [Q3]
+    description: SPY bars from 2025; the market return after the Fama-French file ends.
+
   # ---- Analysis-ready ----
   event_study_table:
     path: processed/event_study_table.csv

@@ -134,6 +134,22 @@ DATASETS = (
                    "gvkey IN (SELECT gvkey FROM {link})"),
         ),
     ),
+    Dataset(
+        "crsp_names",
+        "CRSP ticker history per permno (share-class exact; maps firms to current tickers).",
+        (
+            Source("crsp", "stksecurityinfohist",
+                   ("permno", "secinfostartdt", "secinfoenddt", "ticker", "tradingsymbol", "shareclass"),
+                   "permno IN ({members})"),
+            Source("crsp", "dsenames", ("permno", "namedt", "nameendt", "ticker", "tsymbol"),
+                   "permno IN ({members})"),
+        ),
+    ),
+    Dataset(
+        "comp_company",
+        "Compustat company header: name and SEC CIK (CIK maps firms to current tickers).",
+        (Source("comp", "company", ("gvkey", "conm", "cik"), "gvkey IN (SELECT gvkey FROM {link})"),),
+    ),
 )
 
 
@@ -194,12 +210,15 @@ def _where(src: Source, chosen: dict[str, Source | None]) -> str:
     return src.where.format(start=START, members=members, link=link_sql)
 
 
-def pull(db, chosen: dict[str, Source | None]) -> dict:
+def pull(db, chosen: dict[str, Source | None], only: set[str] | None = None) -> dict:
+    """Download every dataset (or just ``only``); the manifest keeps earlier entries."""
     OUT.mkdir(parents=True, exist_ok=True)
-    manifest = {"pulled": date.today().isoformat(), "start": START, "datasets": {}}
+    manifest_file = OUT / "_manifest.json"
+    manifest = json.loads(manifest_file.read_text(encoding="utf-8")) if manifest_file.exists() else {"datasets": {}}
+    manifest.update({"start": START})
     for ds in DATASETS:
         src = chosen[ds.name]
-        if src is None:
+        if src is None or (only and ds.name not in only):
             continue
         where = _where(src, chosen)
         base = f"SELECT {', '.join(src.columns)} FROM {src.library}.{src.table}"
@@ -224,10 +243,11 @@ def pull(db, chosen: dict[str, Source | None]) -> dict:
             path = f"{ds.name}.parquet"
             print(f"  {ds.name}: {rows:,} rows", flush=True)
         manifest["datasets"][ds.name] = {
+            "pulled": date.today().isoformat(),
             "path": path, "source": f"{src.library}.{src.table}", "rows": rows,
             "query": sql, "description": ds.description, "notes": list(ds.needs),
         }
-    (OUT / "_manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
+    manifest_file.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
     return manifest
 
 
@@ -235,7 +255,12 @@ def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(prog="python -m fedcore.ingest.wrds")
     parser.add_argument("command", choices=("discover", "pull"))
     parser.add_argument("--user", help="WRDS username (or set WRDS_USERNAME)")
+    parser.add_argument("--only", help="comma-separated dataset names to pull (default: all)")
     args = parser.parse_args(argv)
+    only = set(args.only.split(",")) if args.only else None
+    unknown = (only or set()) - {ds.name for ds in DATASETS}
+    if unknown:
+        sys.exit(f"unknown dataset(s): {sorted(unknown)}")
 
     db = connect(args.user)
     try:
@@ -245,7 +270,7 @@ def main(argv: list[str] | None = None) -> None:
         if missing:
             sys.exit(f"no usable source for: {', '.join(missing)}. Nothing was downloaded.")
         if args.command == "pull":
-            pull(db, chosen)
+            pull(db, chosen, only)
             print(f"Done. Files in {OUT}")
     finally:
         db.close()

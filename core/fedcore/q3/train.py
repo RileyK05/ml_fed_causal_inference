@@ -28,6 +28,13 @@ def seed_everything(seed: int) -> None:
     torch.manual_seed(seed)
 
 
+def resolve_device(device: str | torch.device | None = None) -> torch.device:
+    """``None`` picks CUDA when available, else CPU. The trainer follows the model's device."""
+    if device is None:
+        return torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    return torch.device(device)
+
+
 def validation_meetings(panel: Q3Panel, val_frac: float = 0.15) -> pd.DatetimeIndex:
     """Chronologically last slice of ``panel``'s meetings. At least one, and not all of them."""
     meetings = panel.meetings()

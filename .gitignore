@@ -40,3 +40,7 @@ cde/results/*
 core/data/raw/wrds/
 # Q3 panel built from WRDS data: licensed, rebuilt by fedcore.q3.real.load_real_panel().
 core/data/processed/q3_panel/
+# yfinance bars keyed by CRSP permno (licensed mapping). Re-pull: python -m fedcore.ingest.yf_firms pull
+core/data/raw/yfinance_firms/
+# 2026 holdout panel (CRSP history + yfinance): licensed inputs.
+core/data/processed/q3_holdout/

@@ -16,7 +16,15 @@ from fedcore.q3.synthetic import (
     sequence_pattern,
     synthetic_components,
 )
-from fedcore.q3.train import ChannelScaler, FitResult, fit, per_meeting_mse, predict, validation_meetings
+from fedcore.q3.train import (
+    ChannelScaler,
+    FitResult,
+    fit,
+    per_meeting_mse,
+    predict,
+    resolve_device,
+    validation_meetings,
+)
 
 __all__ = [
     "BASELINES",

@@ -19,7 +19,7 @@ from torch import nn
 from fedcore.q3 import Q3Panel, ResponseModel, make_pretrain_windows
 from fedcore.q3.train import fit as train_fit
 from fedcore.q3.train import predict as train_predict
-from fedcore.q3.train import seed_everything
+from fedcore.q3.train import resolve_device, seed_everything
 
 from fedenc.encoder_transformer import PatchTransformerEncoder
 from fedenc.pretrain import PretrainResult, pretrain
@@ -40,6 +40,7 @@ def get_pretrained(
     seed: int = PRETRAIN_SEED,
     epochs: int = PRETRAIN_EPOCHS,
     lr: float = PRETRAIN_LR,
+    device: str | None = None,
 ) -> PretrainResult:
     """Pre-train once and cache. Deterministic: same parameters, same checkpoint.
 
@@ -57,7 +58,10 @@ def get_pretrained(
             _PRETRAIN_CACHE[key] = payload["result"]
             return _PRETRAIN_CACHE[key]
     windows, mask = make_pretrain_windows(n_windows, seed=seed)
-    result = pretrain(PatchTransformerEncoder(), windows, mask, epochs=epochs, lr=lr, seed=seed)
+    result = pretrain(
+        PatchTransformerEncoder(), windows, mask, epochs=epochs, lr=lr, seed=seed,
+        device=resolve_device(device),
+    )
     try:
         torch.save({"key": key, "result": result}, cache)
     except OSError:
@@ -72,6 +76,7 @@ class TxArm:
     ``init``    "scratch" | "pretrained"
     ``adapt``   "full" (all weights) | "frozen" (freeze_encoder) | "top" (unfreeze top block only)
     ``history_only``  zero fundamentals and context at fit and predict (E4 ablation)
+    ``device``  None = CUDA when available, else CPU
     """
 
     def __init__(
@@ -82,6 +87,7 @@ class TxArm:
         history_only: bool = False,
         encoder_kwargs: dict | None = None,
         pretrain_kwargs: dict | None = None,
+        device: str | None = None,
         **train_kwargs,
     ):
         if init not in ("scratch", "pretrained"):
@@ -94,6 +100,7 @@ class TxArm:
         self.history_only = bool(history_only)
         self.encoder_kwargs = dict(encoder_kwargs or {})
         self.pretrain_kwargs = dict(pretrain_kwargs or {})
+        self.device = device
         self.train_kwargs = dict(train_kwargs)
         self.model: nn.Module | None = None
         self.scaler = None
@@ -121,7 +128,7 @@ class TxArm:
     def _encoder(self) -> PatchTransformerEncoder:
         enc = PatchTransformerEncoder(**self.encoder_kwargs)
         if self.init == "pretrained":
-            enc.load_state_dict(get_pretrained(**self.pretrain_kwargs).state_dict)
+            enc.load_state_dict(get_pretrained(device=self.device, **self.pretrain_kwargs).state_dict)
             if self.adapt == "top":
                 enc.freeze([enc.proj, enc.pos, *enc.blocks.layers[:-1]])
         return enc
@@ -138,7 +145,7 @@ class TxArm:
         encoder = self._encoder()
         self.model = ResponseModel(
             encoder, n_fund=panel.fundamentals.shape[1], n_ctx=panel.context.shape[1]
-        )
+        ).to(resolve_device(self.device))
         self.fit_result = train_fit(self.model, self._prep(panel), seed=seed, **kw)
         self.scaler = self.fit_result.scaler
 

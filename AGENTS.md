@@ -37,7 +37,7 @@ project. `core/tests/test_isolation.py` enforces it. Code needed by 2+ projects 
 - `core/data/raw/` is untouched downloads: never edit or regenerate. `PROVENANCE.md` still cites old `eeif_data/` paths; use its mapping table to locate files.
 - Never forward-fill or interpolate: a gap stays NaN. `fedcore.data.event_panel` reindexes to the trading-day calendar (`etf_returns`) without filling.
 - WRDS data (`core/data/raw/wrds/`, Q3 firm panel) is licensed and gitignored: never commit it or upload it raw. Re-pull with `python -m fedcore.ingest.wrds pull --user <name>` (login saved in pgpass by the user; agents never handle the password). Install `wrds` with `pip install --no-deps wrds`: it pins pandas<2.3, but the repo runs on pandas 3.
-- The real Q3 panel is `fedcore.q3.real.load_real_panel()` (cached in gitignored `core/data/processed/q3_panel/`, rebuilt when inputs change); `run_arms(data="real")` uses it. Building the panel is fine; fitting arms on it is training and needs the user's go-ahead.
+- The real Q3 panel is `fedcore.q3.real.load_real_panel()` (cached in gitignored `core/data/processed/q3_panel/`, rebuilt when inputs or `BUILD_VERSION` change); `run_arms(data="real")` uses it. The 2026 meetings (CRSP ends 2025-12-31) are a separate yfinance-spliced holdout, `load_holdout_panel()`: never pooled into training. Building the panel is fine; fitting arms on it is training and needs the user's go-ahead.
 - `data.meetings()` excludes unscheduled actions by default (separate treatment, never pooled). `rel_day = 0` is the announcement day.
 
 ## Questions and results

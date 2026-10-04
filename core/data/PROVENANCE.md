@@ -35,6 +35,7 @@ Python env: project `.venv`, see the root README.
 | 5 | SF Fed U.S. Monetary Policy Event-Study Database (USMPD) | `05_sf_fed_usmpd/` | Federal Reserve Bank of San Francisco, Center for Monetary Research | https://www.frbsf.org/wp-content/uploads/USMPD.xlsx and https://www.frbsf.org/wp-content/uploads/monetary-policy-surprises.zip (linked from https://www.frbsf.org/research-and-insights/data-and-indicators/us-monetary-policy-event-study-database/) | 2026-09-22 |
 | 6 | Merged event-study table | `06_merged/` | Built in-project from datasets 1-5 | n/a (derived) | 2026-09-22 |
 | 7 | WRDS firm panel (CRSP, Compustat, CCM, Fama-French) | `core/data/raw/wrds/` (gitignored, licensed) | Wharton Research Data Services, user rileykehoe05 | crsp.dsp500list_v2, crsp.dsf_v2, crsp.stkdelists, ff.factors_daily, crsp_a_ccm.ccmxpf_lnkhist, comp.fundq, comp.co_hgic | 2026-10-04 |
+| 8 | 2026 holdout extension | `core/data/raw/yfinance_firms/` (gitignored), `core/data/raw/wikipedia/` | Yahoo Finance via yfinance 1.7.0; Wikipedia | 486 end-2025 S&P members still listed, plus SPY, from 2025-01-01; https://en.wikipedia.org/wiki/List_of_S%26P_500_companies | 2026-10-04 |
 
 ## 1. FOMC dates
 - Source: https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm. First pulled 2026-09-21; 2026 rows re-fetched and re-verified 2026-09-21 (snapshot in `raw_fomccalendars_recheck.html`).
@@ -170,10 +171,19 @@ Python env: project `.venv`, see the root README.
 - **Not run:** any model or statistical test.
 
 ### 7a. Derived Q3 panel (`processed/q3_panel/`, gitignored)
-- **Built by:** `fedcore.q3.real.load_real_panel()` from the section-7 tables plus `usmpd_statements`, `mps_surprises` and `treasury_1y`; cached as `.npy` arrays, `rows.parquet` (meeting, permno, gvkey, GICS sector) and `meta.json` (input fingerprints, counts, dropped meetings). Rebuilt automatically when any input file changes; a build takes about 15 seconds.
+- **Built by:** `fedcore.q3.real.load_real_panel()` from the section-7 tables plus `usmpd_statements`, `mps_surprises` and `treasury_1y`; cached as `.npy` arrays, `rows.parquet` (meeting, permno, gvkey, GICS sector) and `meta.json` (input fingerprints, counts, dropped meetings). Rebuilt automatically when any input file or `BUILD_VERSION` changes; a build takes about 15 seconds.
 - **Build of 2026-10-04:** 126,854 firm-meeting rows, 253 scheduled statements (1994-05-17 to 2025-12-10), 1,252 firms, 499-505 firms per meeting. 1994-02-04 and 1994-03-22 dropped: the 63-day 1-year-yield change needs history the Treasury file does not have.
 - **Definitions:** shock `s = 10 * STMT` and context = the Q1 state controls (identical to `dml` Q1) plus annualized 21-day market volatility. Target = meeting-day CRSP return in percent. Channels use the synthetic panel's own functions; where the synthetic panel falls back to a firm's true beta, the real panel uses 1.0.
 - **Point-in-time:** membership on the meeting date; fundamentals from the latest quarter with `rdq` strictly before the meeting (stale after 365 days); link and GICS valid on the meeting date.
-- **Known gaps:** GICS history starts 1999-06-30, so 1994-1998 rows have no sector (83% of rows have one); sector is row metadata, not a model input. Book-to-market reaches -78/+20 for firms with tiny or negative book equity; the trainer's median/IQR scaling clips at +/-5.
+- **Sector:** GICS history starts 1999-06-30. Rows before it take the firm's earliest recorded sector, labeled `gsector_source = backfill` (a deliberate, labeled look-ahead: sectors almost never change). Build 2: 83.3% as-of, 14.6% backfill, 2.2% none. Sector is row metadata, not a model input.
+- **Known gaps:** Book-to-market reaches -78/+20 for firms with tiny or negative book equity; the trainer's median/IQR scaling clips at +/-5.
 - **Sanity check (not a model):** the meeting-average return regressed on `s` gives -1.05% per 10bp over the 253 meetings, in line with the Q1 DML estimate (-0.96).
+
+## 8. 2026 holdout extension (yfinance)
+- **Why:** the school's CRSP subscription is the annual vintage, ending 2025-12-31. The six 2026 statements (01-28, 03-18, 04-29, 06-17, 07-29, 09-16) get firm data from yfinance until the next vintage replaces it.
+- **Pulled by:** `python -m fedcore.ingest.yf_firms pull` (retries tickers Yahoo drops under load). Also pulled two small WRDS lookups for the mapping: `crsp_names` (crsp.stksecurityinfohist) and `comp_company` (comp.company: name and CIK; a lookup table with no date, so read directly rather than registered in the catalog).
+- **Universe:** the 503 S&P members on 2025-12-31, kept if still in the Wikipedia list on the pull date. Matched by CRSP ticker, share-class exact (GOOG/GOOGL, NWS/NWSA, FOX/FOXA, BRK.B, BF.B): 484, plus 2 by CIK = **486**. The 17 unmatched all left the index during 2026 (e.g. Campbell's, Electronic Arts, Hologic, Trade Desk). Wikipedia no longer publishes dated changes, so 2026 removals are excluded rather than dated and 2026 additions are not covered (no CRSP history): a small, labeled survivorship bias.
+- **Overlap check, 2025 (`fedcore.q3.real.compare_overlap`):** 120,622 firm-days. Return correlation 0.99998; median absolute difference 0.0pp, 99th percentile 0.003pp; 0.02% of days differ by more than 0.1pp; worst firm correlation 0.991. Close and volume match CRSP (median log volume ratio 0.0). SPY vs the Fama-French market: correlation 0.995, median gap 0.056pp (SPY is the S&P 500, FF is the whole market).
+- **Splice (`holdout_inputs`):** after 2025-12-31, returns from adjusted closes, price from the close, shares held at the last CRSP value, market = Fama-French through 2026-08-31 then SPY. CRSP rows are never replaced.
+- **Holdout panel (`load_holdout_panel`, cached in gitignored `processed/q3_holdout/`):** 6 meetings x 486 firms = 2,916 rows. Scored separately; never pooled into training or the headline evaluation.
 

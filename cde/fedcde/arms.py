@@ -16,7 +16,7 @@ from fedcore.q3 import ResponseModel
 from fedcore.q3.contracts import Q3Panel
 from fedcore.q3.train import fit as train_fit
 from fedcore.q3.train import predict as train_predict
-from fedcore.q3.train import seed_everything
+from fedcore.q3.train import resolve_device, seed_everything
 
 from fedcde.encoder_cde import CDELogSigEncoder, NeuralCDEEncoder
 from fedcde.signature import SigRidge
@@ -29,8 +29,9 @@ class CDEModel:
     reproducible for a given seed, exactly like the summary-network baseline.
     """
 
-    def __init__(self, seed: int = 0, encoder_cls=None, encoder_kwargs=None, **train_kwargs):
+    def __init__(self, seed: int = 0, encoder_cls=None, encoder_kwargs=None, device=None, **train_kwargs):
         self.seed = int(seed)
+        self.device = device  # None = CUDA when available, else CPU
         self.encoder_cls = encoder_cls
         self.encoder_kwargs = dict(encoder_kwargs or {})
         self.train_kwargs = train_kwargs
@@ -49,7 +50,7 @@ class CDEModel:
             encoder,
             n_fund=panel.fundamentals.shape[1],
             n_ctx=panel.context.shape[1],
-        )
+        ).to(resolve_device(self.device))
         start = time.perf_counter()
         self.fit_result = train_fit(self.model, panel, seed=seed, **kw)
         self.fit_seconds_ = time.perf_counter() - start

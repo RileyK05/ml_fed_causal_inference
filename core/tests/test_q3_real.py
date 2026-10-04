@@ -6,8 +6,8 @@ import pandas as pd
 import pytest
 
 from fedcore.q3 import BASELINES, make_synthetic_panel, run_arms
-from fedcore.q3.contracts import L, RET
-from fedcore.q3.real import CONTEXT_NAMES, FUNDAMENTAL_NAMES, Inputs, build_panel
+from fedcore.q3.contracts import CHANNELS, L, RET
+from fedcore.q3.real import CONTEXT_NAMES, FUNDAMENTAL_NAMES, Inputs, build_panel, pretrain_corpus
 from fedcore.results import ResultStore
 
 DAYS = pd.bdate_range("2000-01-03", periods=300)
@@ -103,7 +103,17 @@ def test_shock_context_and_sector(built):
     assert set(panel.shock[rows["meeting"] == M1]) == {np.float32(0.5)}
     assert np.isfinite(panel.context).all() and panel.context.shape[1] == len(CONTEXT_NAMES)
     assert rows.loc[rows["permno"] == 1, "gsector"].eq("45").all()
+    assert rows.loc[rows["permno"] == 1, "gsector_source"].eq("asof").all()
     assert rows.loc[rows["permno"] != 1, "gsector"].isna().all()
+
+
+def test_sector_before_gics_history_is_backfilled_and_labeled():
+    inp = _inputs()
+    late = inp.gics.assign(indfrom=DAYS[275])  # GICS history starts after M1
+    _, rows, _ = build_panel(Inputs(**{**inp.__dict__, "gics": late}))
+    r = rows[rows["permno"] == 1].set_index("meeting")
+    assert r.loc[M1, "gsector"] == "45" and r.loc[M1, "gsector_source"] == "backfill"
+    assert r.loc[M2, "gsector_source"] == "asof"
 
 
 def test_run_arms_real_uses_the_cached_panel(tmp_path, monkeypatch):
@@ -117,3 +127,60 @@ def test_run_arms_real_uses_the_cached_panel(tmp_path, monkeypatch):
     assert params["noise"] is None
     with pytest.raises(ValueError, match="synthetic data only"):
         run_arms({"pooled": BASELINES["pooled"]}, store, data="real", n_firms=5)
+
+
+def test_pretrain_corpus_ends_before_cutoff_and_carries_end_dates():
+    corpus = pretrain_corpus(M1, stride=1, min_observed=200, inputs=_inputs())
+    assert len(corpus) > 0
+    assert (corpus.end_dates < M1).all()
+    assert corpus.end_dates.max() == DAYS[259]  # last day before the cutoff
+    history, mask, ends = corpus.sample(5, seed=0)
+    assert history.shape == (5, L, len(CHANNELS)) and mask.shape == (5, L)
+    assert np.array_equal(np.isfinite(history).all(axis=-1), mask)
+    assert ends.is_monotonic_increasing
+    # window i's last row is that firm's return on its end date
+    h, _ = corpus.windows(np.array([0]))
+    f, e = corpus.firm[0], corpus.end[0]
+    assert np.allclose(h[0, -1], corpus.channels[f, e], equal_nan=True)
+
+
+def test_pretrain_corpus_respects_min_observed_and_stride():
+    corpus = pretrain_corpus(DAYS[-1], stride=5, min_observed=252, inputs=_inputs())
+    assert ((corpus.end - (L - 1)) % 5 == 0).all()
+    assert corpus.observed[corpus.firm[:, None], corpus.end[:, None] + np.arange(-L + 1, 1)].all()
+
+
+def test_holdout_inputs_splice_yfinance_after_the_crsp_end(monkeypatch):
+    from fedcore.q3 import real
+
+    base = _inputs()
+    end = DAYS[289]
+    base = Inputs(
+        daily=base.daily[base.daily["dlycaldt"] <= end],
+        members=base.members.assign(mbrenddt=end),
+        market=base.market[base.market["date"] <= DAYS[294]],  # FF outlasts CRSP by 5 days
+        link=base.link, fundq=base.fundq, gics=base.gics, meetings=base.meetings,
+    )
+    after = DAYS[285:]
+    bars = pd.concat(
+        [pd.DataFrame({"permno": p, "date": after, "adj_close": 1.0, "close": 20.0,
+                       "volume": 5e4, "ret": 0.002}) for p in (1, 2)],  # permno 3 left the index
+        ignore_index=True,
+    )
+    spy = pd.DataFrame({"date": after, "ret": 0.003})
+    monkeypatch.setattr(real, "_yf_returns", lambda: (bars, spy))
+    ext = real.holdout_inputs(base)
+
+    new = ext.daily[ext.daily["dlycaldt"] > end]
+    assert set(new["permno"]) == {1, 2} and new["dlycaldt"].min() == DAYS[290]
+    assert new["shrout"].eq(1000).all()  # shares held at the last CRSP value
+    old = ext.daily[ext.daily["dlycaldt"] <= end]
+    assert len(old) == len(base.daily)  # CRSP rows untouched, no yfinance rows before the end
+
+    mkt = ext.market.set_index("date")
+    assert mkt.loc[DAYS[294], "mktrf"] == pytest.approx(0.001)  # Fama-French while it lasts
+    assert mkt.loc[DAYS[295], "mktrf"] == pytest.approx(0.003) and mkt.loc[DAYS[295], "rf"] == 0.0  # then SPY
+    assert mkt.index.is_unique
+
+    ends = ext.members.set_index("permno")["mbrenddt"]
+    assert ends[[1, 2]].isna().all() and ends[3] == end
