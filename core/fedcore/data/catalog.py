@@ -10,7 +10,7 @@ import yaml
 from fedcore.config import CATALOG_FILE, DATA
 
 LAYERS = ("raw", "interim", "processed")
-GRAINS = ("daily", "monthly", "event")
+GRAINS = ("daily", "monthly", "quarterly", "event", "spell")
 
 
 @dataclass(frozen=True)
@@ -33,6 +33,16 @@ class Dataset:
     @property
     def exists(self) -> bool:
         return self.file.exists()
+
+    @property
+    def is_parquet(self) -> bool:
+        """A .parquet file, or a folder of .parquet parts (e.g. one per year)."""
+        return self.file.suffix == ".parquet" or self.file.is_dir()
+
+    @property
+    def parts(self) -> list[Path]:
+        """The file itself, or every .parquet part of a folder dataset, sorted."""
+        return sorted(self.file.glob("*.parquet")) if self.file.is_dir() else [self.file]
 
 
 @lru_cache(maxsize=1)

@@ -8,11 +8,18 @@ import pandas as pd
 from fedcore.data.catalog import Dataset, catalog, get
 
 
+def read(ds: Dataset) -> pd.DataFrame:
+    """Raw file contents: CSV, a parquet file, or a folder of parquet parts."""
+    if ds.is_parquet:
+        return pd.concat([pd.read_parquet(f) for f in ds.parts], ignore_index=True)
+    return pd.read_csv(ds.file, na_values=list(ds.na_values) or None)
+
+
 def load(name: str, start=None, end=None, columns: list[str] | None = None) -> pd.DataFrame:
     """Load a dataset by catalog name. The date column is parsed; start/end filter on it
     (inclusive). Nothing is filled or interpolated -- gaps stay NaN."""
     ds = get(name)
-    df = pd.read_csv(ds.file, na_values=list(ds.na_values) or None)
+    df = read(ds)
     df[ds.date_column] = pd.to_datetime(df[ds.date_column])
     if start is not None:
         df = df[df[ds.date_column] >= pd.Timestamp(start)]
@@ -27,7 +34,10 @@ def load(name: str, start=None, end=None, columns: list[str] | None = None) -> p
 def fingerprint(name: str) -> str:
     """Short content hash of a dataset file, recorded with every result run so a result
     can always be traced back to the exact data it was computed on."""
-    return hashlib.md5(get(name).file.read_bytes()).hexdigest()[:12]
+    digest = hashlib.md5()
+    for part in get(name).parts:
+        digest.update(part.read_bytes())
+    return digest.hexdigest()[:12]
 
 
 def coverage(names: list[str] | None = None) -> pd.DataFrame:
@@ -54,7 +64,7 @@ def check(ds: Dataset) -> list[str]:
     if not ds.exists:
         return [f"file missing: {ds.file}"]
     problems = []
-    df = pd.read_csv(ds.file, na_values=list(ds.na_values) or None)
+    df = read(ds)
     for col in (ds.date_column, *ds.key):
         if col not in df.columns:
             problems.append(f"column {col!r} not in file")

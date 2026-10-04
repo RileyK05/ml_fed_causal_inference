@@ -8,7 +8,9 @@
 #   path         file path relative to data/
 #   layer        raw | interim | processed
 #   source       who published it
-#   grain        daily | monthly | event   (event = one row per FOMC/communication event)
+#   grain        daily | monthly | quarterly | event | spell
+#                (event = one row per FOMC/communication event; spell = one row per validity
+#                interval, e.g. index membership or a link, keyed by its start date)
 #   date_column  column parsed as the date index for range filters and coverage
 #   key          column(s) that uniquely identify a row (checked by `fedcore check`)
 #   questions    which of Q1-Q5 (docs/question.md) use it
@@ -172,6 +174,77 @@ datasets:
     key: [reference_month]
     questions: [Q1]
     description: CPI release date per reference month. Also the seed for the auxiliary CPI event calendar (Q3).
+
+  # ---- Firm panel (WRDS; licensed, gitignored, pulled by fedcore.ingest.wrds) ----
+  sp500_members:
+    path: raw/wrds/sp500_members.parquet
+    layer: raw
+    source: CRSP via WRDS (crsp.dsp500list_v2)
+    grain: spell
+    date_column: mbrstartdt
+    key: [permno, mbrstartdt]
+    questions: [Q3]
+    description: Historical S&P 500 membership spells (permno, start, end). Defines the firm universe.
+
+  crsp_daily:
+    path: raw/wrds/crsp_daily
+    layer: raw
+    source: CRSP via WRDS (crsp.dsf_v2, CIZ format)
+    grain: daily
+    date_column: dlycaldt
+    key: [permno, dlycaldt]
+    questions: [Q3]
+    description: Daily returns (delisting-inclusive), price, volume, shares for every S&P 500 member since 1993. One parquet per year.
+
+  crsp_delist:
+    path: raw/wrds/crsp_delist.parquet
+    layer: raw
+    source: CRSP via WRDS (crsp.stkdelists)
+    grain: event
+    date_column: delistingdt
+    key: [permno, delistingdt]
+    questions: [Q3]
+    description: Delisting events and returns. Reference only; CIZ daily returns already include them.
+
+  ff_factors_daily:
+    path: raw/wrds/ff_factors_daily.parquet
+    layer: raw
+    source: Kenneth French Data Library via WRDS (ff.factors_daily)
+    grain: daily
+    date_column: date
+    key: [date]
+    questions: [Q3]
+    description: Daily market excess return, SMB, HML and risk-free rate. Market channel for relative returns and beta.
+
+  ccm_link:
+    path: raw/wrds/ccm_link.parquet
+    layer: raw
+    source: CRSP/Compustat Merged via WRDS (crsp_a_ccm.ccmxpf_lnkhist)
+    grain: spell
+    date_column: linkdt
+    key: [gvkey, lpermno, linkdt]
+    questions: [Q3]
+    description: gvkey to permno links with validity dates (LU/LC, primary P/C only).
+
+  comp_fundq:
+    path: raw/wrds/comp_fundq.parquet
+    layer: raw
+    source: Compustat North America via WRDS (comp.fundq)
+    grain: quarterly
+    date_column: datadate
+    key: [gvkey, datadate, fyearq, fqtr]
+    questions: [Q3]
+    description: Quarterly fundamentals; join on report date rdq (not datadate) to stay point-in-time.
+
+  comp_gics:
+    path: raw/wrds/comp_gics.parquet
+    layer: raw
+    source: Compustat via WRDS (comp.co_hgic)
+    grain: spell
+    date_column: indfrom
+    key: [gvkey, indfrom]
+    questions: [Q3]
+    description: Historical GICS sector/group/industry codes with validity dates.
 
   # ---- Analysis-ready ----
   event_study_table:

@@ -17,7 +17,8 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["pytest>=8", "plotly>=5.20"]
-ingest = ["requests", "openpyxl", "yfinance", "beautifulsoup4", "lxml"]
+# wrds is installed separately with --no-deps: it pins pandas<2.3 but works on pandas 3.
+ingest = ["requests", "openpyxl", "yfinance", "beautifulsoup4", "lxml", "psycopg2-binary", "sqlalchemy>=2"]
 q3 = ["torch>=2.2", "lightgbm>=4.0", "scikit-learn>=1.4"]
 
 [project.scripts]

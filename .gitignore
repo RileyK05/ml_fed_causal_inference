@@ -35,3 +35,6 @@ encoder/results/*
 !encoder/results/README.md
 cde/results/*
 !cde/results/README.md
+
+# WRDS data is licensed: never commit it. Re-pull with python -m fedcore.ingest.wrds pull.
+core/data/raw/wrds/

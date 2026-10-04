@@ -34,6 +34,7 @@ Python env: project `.venv`, see the root README.
 | 4 | Cleveland Fed inflation expectations | `04_cleveland_fed_inflation_expectations/` | Federal Reserve Bank of Cleveland | https://www.clevelandfed.org/-/media/files/webcharts/inflationexpectations/inflation-expectations.xlsx?sc_lang=en (linked from https://www.clevelandfed.org/indicators-and-data/inflation-expectations) | 2026-09-22 |
 | 5 | SF Fed U.S. Monetary Policy Event-Study Database (USMPD) | `05_sf_fed_usmpd/` | Federal Reserve Bank of San Francisco, Center for Monetary Research | https://www.frbsf.org/wp-content/uploads/USMPD.xlsx and https://www.frbsf.org/wp-content/uploads/monetary-policy-surprises.zip (linked from https://www.frbsf.org/research-and-insights/data-and-indicators/us-monetary-policy-event-study-database/) | 2026-09-22 |
 | 6 | Merged event-study table | `06_merged/` | Built in-project from datasets 1-5 | n/a (derived) | 2026-09-22 |
+| 7 | WRDS firm panel (CRSP, Compustat, CCM, Fama-French) | `core/data/raw/wrds/` (gitignored, licensed) | Wharton Research Data Services, user rileykehoe05 | crsp.dsp500list_v2, crsp.dsf_v2, crsp.stkdelists, ff.factors_daily, crsp_a_ccm.ccmxpf_lnkhist, comp.fundq, comp.co_hgic | 2026-10-04 |
 
 ## 1. FOMC dates
 - Source: https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm. First pulled 2026-09-21; 2026 rows re-fetched and re-verified 2026-09-21 (snapshot in `raw_fomccalendars_recheck.html`).
@@ -148,3 +149,23 @@ Python env: project `.venv`, see the root README.
   - No VIX value in the table exceeds 30.
   - `DCOILWTICO` same-day values range $58.67-$110.47 across the 30 dates -- within the full-sample range reported in section 3, nothing out of bounds.
 - **Not run:** any regression, model fit, or statistical test. This is a merge and a set of data-quality checks only.
+
+## 7. WRDS firm panel (Q3)
+- **Pulled by:** `python -m fedcore.ingest.wrds pull --user <name>` on 2026-10-04. Login is saved once in the user's pgpass file; the script never handles a password. `core/data/raw/wrds/_manifest.json` records the exact SQL, source table and row count for every file.
+- **Licensed data:** WRDS terms apply. The folder is gitignored and must never be committed or uploaded raw; ship only derived arrays to any external compute.
+- **Universe:** every PERMNO in the S&P 500 at any point with a spell ending on or after 1993-01-01 (1,295 firms). Start date 1993-01-01 gives 252 trading days of history before the first USMPD statement (1994-02-04). Survivor-free: departed and delisted members are included.
+- **Vintage:** CRSP CIZ (`_v2`) format, annual update: daily data ends **2025-12-31**. The legacy SIZ tables stopped at 2024-12-31 and were not used. 2026 meetings have no firm data until the next annual update.
+
+| Dataset | Source table | Rows | Key | Notes |
+|---|---|---|---|---|
+| `sp500_members` | crsp.dsp500list_v2 | 2,084 | permno, mbrstartdt | Membership spells; current members end 2025-12-31 (file end, not exit) |
+| `crsp_daily` | crsp.dsf_v2 | 6,541,906 | permno, dlycaldt | One parquet per year, 1993-2025. `dlyret` is delisting-inclusive (CIZ); 0.19% of returns missing |
+| `crsp_delist` | crsp.stkdelists | 637 | permno, delistingdt | Reference only; already folded into `dlyret` |
+| `ff_factors_daily` | ff.factors_daily | 8,473 | date | `mktrf`, `smb`, `hml`, `rf`; runs to 2026-08-31 |
+| `ccm_link` | crsp_a_ccm.ccmxpf_lnkhist | 1,590 | gvkey, lpermno, linkdt | linktype LU/LC, linkprim P/C only |
+| `comp_fundq` | comp.fundq | 113,450 | gvkey, datadate, fyearq, fqtr | INDL/STD/D/C. 28 (gvkey, datadate) repeats are fiscal-year changes, hence the 4-column key. 3.6% have no `rdq` and cannot be joined point-in-time |
+| `comp_gics` | comp.co_hgic | 1,958 | gvkey, indfrom | Historical GICS with validity dates |
+
+- **Raw is untouched:** WRDS native column names, dates stored as ISO strings. Renaming, type conversion and the point-in-time joins (fundamentals on `rdq`, sector and link on their validity dates) belong in interim.
+- **Not run:** any model or statistical test.
+

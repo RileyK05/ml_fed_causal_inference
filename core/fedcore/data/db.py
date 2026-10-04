@@ -20,8 +20,12 @@ def connect() -> duckdb.DuckDBPyConnection:
     for ds in catalog().values():
         if not ds.exists:
             continue
-        nulls = ", ".join(f"'{v}'" for v in ("", *ds.na_values))
         path = ds.file.as_posix().replace("'", "''")
+        if ds.is_parquet:
+            source = f"{path}/*.parquet" if ds.file.is_dir() else path
+            con.execute(f'CREATE VIEW "{ds.name}" AS SELECT * FROM read_parquet(\'{source}\')')
+            continue
+        nulls = ", ".join(f"'{v}'" for v in ("", *ds.na_values))
         con.execute(
             f'CREATE VIEW "{ds.name}" AS SELECT * FROM read_csv(\'{path}\', header=true, '
             f"nullstr=[{nulls}], sample_size=-1)"

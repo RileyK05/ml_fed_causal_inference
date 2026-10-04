@@ -36,6 +36,7 @@ project. `core/tests/test_isolation.py` enforces it. Code needed by 2+ projects 
 - Every dataset is registered in `core/data/catalog.yaml` and exposed as a DuckDB SQL view with the same name. Adding data = file under `core/data/{raw,interim,processed}/` + catalog entry + provenance note in `core/data/PROVENANCE.md` + `fedcore check`. It then appears in `load()`, SQL, the viewer and the tests automatically.
 - `core/data/raw/` is untouched downloads: never edit or regenerate. `PROVENANCE.md` still cites old `eeif_data/` paths; use its mapping table to locate files.
 - Never forward-fill or interpolate: a gap stays NaN. `fedcore.data.event_panel` reindexes to the trading-day calendar (`etf_returns`) without filling.
+- WRDS data (`core/data/raw/wrds/`, Q3 firm panel) is licensed and gitignored: never commit it or upload it raw. Re-pull with `python -m fedcore.ingest.wrds pull --user <name>` (login saved in pgpass by the user; agents never handle the password). Install `wrds` with `pip install --no-deps wrds`: it pins pandas<2.3, but the repo runs on pandas 3.
 - `data.meetings()` excludes unscheduled actions by default (separate treatment, never pooled). `rel_day = 0` is the announcement day.
 
 ## Questions and results
