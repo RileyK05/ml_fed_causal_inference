@@ -12,6 +12,9 @@ st.caption("Everything registered in data/catalog.yaml. Add a dataset there and 
 cat = c.data.catalog()
 layer = st.segmented_control("Layer", ["all", *c.LAYER_ORDER], default="all")
 names = [n for n, d in cat.items() if layer in (None, "all") or d.layer == layer]
+if not names:
+    st.caption("No datasets in this layer.")
+    st.stop()
 name = st.selectbox("Dataset", names, format_func=lambda n: f"{n}  ({cat[n].layer}, {cat[n].grain})")
 ds = cat[name]
 

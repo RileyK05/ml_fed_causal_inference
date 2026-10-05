@@ -204,9 +204,10 @@ There's no central arm registry (that would make core import the projects). Inst
 - `fedcore.q3.evaluate.run_arms(arms: dict[str, Callable], store, *, data="synthetic",
   noise="realistic", seeds=(0, 1, 2), **panel_kwargs)` builds the panel, runs every arm
   through `run_walk_forward`, saves each to `store`, and returns a comparison table.
-  `data="real"` raises `NotImplementedError("real Q3 panel not built yet")`.
+  `data="real"` scores the cached WRDS panel (`fedcore.q3.real`) and requires explicit
+  `min_train` and `test_size`; it is training and needs the user's go-ahead.
 - Each project calls `run_arms({**BASELINES, **its_own_arms}, ResultStore(its RESULTS))` from
-  its own `run.py`. Baselines are re-run per project (they're cheap), so each project's
+  its own script (no `run.py` is kept: arms live in each project's `arms.py`). Baselines are re-run per project (they're cheap), so each project's
   results folder is self-contained.
 
 ## 9. Tests (`core/tests/test_q3_foundation.py`)

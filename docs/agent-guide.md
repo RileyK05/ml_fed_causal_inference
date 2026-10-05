@@ -15,11 +15,14 @@ code.
 
 ## Scope
 
-- **Synthetic data only.** No real firm data exists yet; the WRDS pull (CRSP, Compustat) is a
-  later package. Models are validated on a synthetic panel where the true sensitivity b is
-  known, so "did it work" has an exact answer.
-- Models must accept the real panel unchanged once it exists (that's what `Q3Panel` is for).
-- No claims about real markets come out of this phase.
+- **Synthetic panel for validation, real panel for the study.** Models are validated on a
+  synthetic panel where the true sensitivity b is known, so "did it work" has an exact answer.
+  The real WRDS panel is built (`fedcore.q3.real.load_real_panel`; the 2026 holdout is
+  `load_holdout_panel`), but fitting any model on it is training and needs the user's go-ahead
+  (see `AGENTS.md`).
+- Models accept the real panel unchanged (that's what `Q3Panel` is for). Real data has no true
+  b, so `b_corr` and `b_rmse` are undefined there (see `docs/training-plan.md`, D2).
+- No claims about real markets come out of synthetic runs.
 
 ## Launching an agent
 
@@ -61,7 +64,7 @@ Location given in its brief. Contents:
 
 ## Review checklist (human + Claude)
 
-- [ ] Interface respected: `encode(history, mask) -> h` and nothing else crosses the boundary
+- [ ] Interface respected: `HistoryEncoder.forward(x, mask) -> (B, out_dim)` and nothing else crosses the boundary
 - [ ] No leakage: scalers fit on training meetings only; no test-fold tuning; masked/padded
       values provably ignored (the tests exist and pass)
 - [ ] Synthetic recovery: does the model recover the planted b better than the baselines?

@@ -24,7 +24,9 @@ if not runs:
     st.caption("No runs match the filters.")
     st.stop()
 
-run = st.selectbox("Run", runs, format_func=lambda r: f"{r.manifest['question']}  {r.run_id}  ({r.manifest['role']})")
+by_path = {str(r.path): r for r in runs}
+run = by_path[st.selectbox("Run", list(by_path), format_func=lambda p: (
+    f"{by_path[p].manifest['question']}  {by_path[p].run_id}  ({by_path[p].manifest['role']})"))]
 m = run.manifest
 
 st.subheader(m["name"])

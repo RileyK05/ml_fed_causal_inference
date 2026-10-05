@@ -38,7 +38,7 @@ never imports `dml/` or `encoder/` (`core/tests/test_isolation.py` enforces this
 ```text
 cde/fedcde/signature.py
 cde/fedcde/encoder_cde.py
-cde/fedcde/run.py              # run_arms({**BASELINES, **ARMS}, ResultStore(RESULTS))
+cde/fedcde/arms.py             # CDEModel and ARMS; run with fedcore.q3.run_arms (needs the user's go-ahead)
 cde/tests/test_cde.py
 cde/pyproject.toml             # add libraries to the dl extra if needed (torchcde is already there)
 ```
@@ -61,7 +61,7 @@ area). Record which one you used.
   sum for `dlogvol`). Plus a **time channel** t ∈ [0, 1] (`add_time`), and a **cumulative
   observation count** channel (`add_obs_count`, the "observational intensity" trick from
   Kidger et al.) so that missingness carries information.
-- Unobserved days are NaN in the path. `torchcde` coefficient builders interpolate across NaNs.
+- Unobserved days are NaN in the path. `torchcde`'s own NaN interpolation is a Python loop, so `NeuralCDEEncoder` fills the NaNs with a vectorised equivalent (`_fill_nan`: leading -> first observation, interior -> linear, trailing -> last; tested against `torchcde`) before building coefficients.
   Leading padding before a firm's first observed day: start the path at its first observed day
   (pass per-row start indices, or forward-fill the first observation backwards **only for the
   path's initial value** and document it). Test this case explicitly.
@@ -104,7 +104,7 @@ solver takes about 25 big steps instead of 252 (see `torchcde` docs and Morrill 
 If it doesn't, compute depth-2 log-signatures per window yourself (increments plus Lévy areas)
 and feed those as the path. Report wall-clock time per epoch for each setting.
 
-Arms (in `fedcde/run.py` as `ARMS`): `sig_ridge`, `cde` (v1), and `cde_logsig` if you implement the fallback.
+Arms (in `fedcde/arms.py` as `ARMS`): `sig_ridge` and `cde_logsig`. The full-length `NeuralCDEEncoder` (v1) exists but is not registered as an arm: it does not fit the CPU budget.
 
 ## 4. Milestones (in order; stop and report if one fails)
 

@@ -2,7 +2,8 @@ import type { Row } from "./types";
 
 function escapeField(v: unknown): string {
   if (v === null || v === undefined) return "";
-  const s = String(v);
+  let s = String(v);
+  if (typeof v === "string" && /^[=+\-@\t\r]/.test(s)) s = `'${s}`;  // Excel runs these as formulas
   return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 }
 

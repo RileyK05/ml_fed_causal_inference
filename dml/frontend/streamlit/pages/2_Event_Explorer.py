@@ -20,6 +20,9 @@ covered = meet[meet.announcement_date.between(rets.date.min(), rets.date.max())]
 st.caption(f"{len(meet)} scheduled meetings in the calendar; {len(covered)} fall inside the returns data "
            f"({rets.date.min().date()} to {rets.date.max().date()}).")
 
+if covered.empty:
+    st.caption("No scheduled meetings fall inside the returns data.")
+    st.stop()
 date = st.selectbox("Meeting", covered.announcement_date[::-1],
                     format_func=lambda d: f"{d.date()}  -  {meet.set_index('announcement_date').notes.get(d, '')}")
 

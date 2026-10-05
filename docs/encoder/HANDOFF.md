@@ -23,7 +23,7 @@ and never imports `dml/` or `cde/` (`core/tests/test_isolation.py` enforces this
 ```text
 encoder/fedenc/encoder_transformer.py
 encoder/fedenc/pretrain.py
-encoder/fedenc/run.py          # run_arms({**BASELINES, **ARMS}, ResultStore(RESULTS))
+encoder/fedenc/arms.py         # TxArm and ARMS; run with fedcore.q3.run_arms (needs the user's go-ahead)
 encoder/tests/test_encoder.py
 encoder/pyproject.toml         # add libraries to the dl extra if needed (only edit outside fedenc/)
 ```
@@ -82,7 +82,7 @@ that start after the last day in its corpus. On synthetic data, generate the pre
 windows from a separate seed and note in the report that real data will need per-fold
 checkpoints (`docs/encoder/transformer.md` section 11).
 
-## 3. Arms (defined in `fedenc/run.py` as `ARMS`)
+## 3. Arms (defined in `fedenc/arms.py` as `ARMS`)
 
 | Arm name | What |
 |---|---|

@@ -65,8 +65,13 @@ def _load(name: str, fp: str) -> pd.DataFrame:
     return data.load(name)
 
 
+def _stamp(name: str) -> str:
+    """Cheap change detector (size + mtime per file). The content hash is for run records only."""
+    return "|".join(f"{p.name}:{p.stat().st_size}:{p.stat().st_mtime_ns}" for p in data.get(name).parts)
+
+
 def load(name: str) -> pd.DataFrame:
-    return _load(name, data.fingerprint(name))
+    return _load(name, _stamp(name))
 
 
 @st.cache_data(show_spinner=False)
@@ -75,7 +80,7 @@ def _coverage(fps: tuple) -> pd.DataFrame:
 
 
 def coverage() -> pd.DataFrame:
-    return _coverage(tuple(data.fingerprint(n) for n, d in data.catalog().items() if d.exists))
+    return _coverage(tuple(_stamp(n) for n, d in data.catalog().items() if d.exists))
 
 
 def page(title: str, icon: str = ":material/insights:") -> None:

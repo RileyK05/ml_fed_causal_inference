@@ -322,7 +322,7 @@ export default function Explain() {
             equity moves are close to unpredictable by design (efficient markets), so a negative out-of-fold R² is
             the honest answer, and a positive one would smell like leakage.</li>
           <li><code>r2_s</code> — how well the controls predict the surprise. This is the diagnostic that matters
-            most. In the primary run it's ≈ 0.007: surprises are essentially unpredictable from pre-announcement
+            most. In the primary run it's ≈ 0 (−0.003): surprises are essentially unpredictable from pre-announcement
             state. That's the comfortable regime: s̃ ≈ s, the denominator is large, and θ is well-identified. If r2_s
             were high and positive, surprises would be largely "expected given X", residual variation would be thin,
             and θ would be a fragile ratio of small numbers.</li>

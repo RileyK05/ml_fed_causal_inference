@@ -3,7 +3,13 @@ import type { EstimateRequest, EstimateResponse, ExportFormat, ExportKind, Q1Con
 async function errorDetail(res: Response): Promise<string> {
   try {
     const body = await res.json();
-    return typeof body.detail === "string" ? body.detail : JSON.stringify(body.detail ?? body);
+    if (typeof body.detail === "string") return body.detail;
+    if (Array.isArray(body.detail)) {
+      return body.detail
+        .map((d: { loc?: unknown[]; msg?: string }) => `${(d.loc ?? []).slice(1).join(".")}: ${d.msg ?? ""}`)
+        .join("; ");
+    }
+    return JSON.stringify(body.detail ?? body);
   } catch {
     return res.statusText;
   }
@@ -44,9 +50,9 @@ export function listRuns(): Promise<{ runs: Row[] }> {
 }
 
 export function getRun(question: string, runId: string): Promise<RunDetail> {
-  return fetch(`/api/runs/${question}/${runId}`).then(handle<RunDetail>);
+  return fetch(`/api/runs/${encodeURIComponent(question)}/${encodeURIComponent(runId)}`).then(handle<RunDetail>);
 }
 
 export function exportRunFigure(question: string, runId: string, figure: ExportKind, format: ExportFormat): Promise<Blob> {
-  return fetch(`/api/runs/${question}/${runId}/export/${figure}?format=${format}`).then(handleBlob);
+  return fetch(`/api/runs/${encodeURIComponent(question)}/${encodeURIComponent(runId)}/export/${figure}?format=${format}`).then(handleBlob);
 }

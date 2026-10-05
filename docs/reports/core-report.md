@@ -1,5 +1,9 @@
 # Core report: Q3 foundation
 
+> Point-in-time report from the synthetic phase (16 datasets then; the catalog has since grown to
+> 27, and the real WRDS panel and 2026 holdout are built). The synthetic runs below were produced
+> before the no-training rule in `AGENTS.md`. For the real-data plan see `docs/training-plan.md`.
+
 Package 00 from `docs/core/HANDOFF.md`. Synthetic panel, shared model contract, trainer, walk-forward harness, and the four baselines later packages have to beat. Scope stayed inside `core/`. Encoder, CDE, and DML were left alone.
 
 The bar is `ridge_interact`. On easy noise it leads on per-meeting MSE and on recovery of the planted sensitivity `b`. On realistic noise the return MSE sits close to the noise floor for every model that sees the shock, and ridge still leads on `b`.

@@ -129,6 +129,11 @@ adds to the multiple-testing count. **Before the first real fit**, write down th
   metadata only (pre-1999 backfilled, labeled).
 - The 2026 holdout drops firms removed from the index during 2026 (no dated change list) and
   2026 additions: a small, labeled survivorship bias.
+- The paired CI averages MSE across seeds within each meeting before bootstrapping, so it
+  reflects meeting-to-meeting variation, not seed variation. Seed spread is reported
+  separately (`*_std`), not folded into the interval.
+- Tabular baselines (ridge, lgbm) clip every feature at median ± 5 IQR, the same rule as the
+  neural trainer, so no arm sees outliers another arm is protected from.
 - On fake data, hand-built summary features beat the transformer from scratch. That says the fake
   data was too easy for summary stats, not that the transformer is wrong, but it sets the bar
   the real data has to clear.
