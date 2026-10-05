@@ -162,3 +162,27 @@ def test_sig_ridge_recovers_b():
     b_true = np.asarray(panel.b_true, dtype=np.float64)
     corr = np.corrcoef(b, b_true)[0, 1]
     assert corr > 0.5
+
+
+def test_fill_nan_matches_torchcde():
+    import torchcde
+
+    from fedcde.encoder_cde import _fill_nan
+
+    torch.manual_seed(0)
+    x = torch.randn(6, 40, 5)
+    mask = torch.rand(6, 40) > 0.4
+    mask[0] = False  # all-masked row
+    mask[1, :5] = False  # leading gap
+    mask[2, -5:] = False  # trailing gap
+    path = build_path(x, mask, window=40)
+    got = _fill_nan(path, mask)
+    assert torch.isfinite(got).all()
+    ref = torchcde.linear_interpolation_coeffs(path[1:])
+    assert torch.allclose(got[1:], ref, atol=1e-5)
+    # time channel passes through on unobserved days; hand-checked small case
+    assert torch.equal(got[1:, :, -2], path[1:, :, -2])
+    p = torch.tensor([[[5.0], [1.0], [float("nan")], [3.0], [float("nan")]]])
+    assert _fill_nan(p, torch.tensor([[True, True, False, True, False]])).flatten().tolist() == [5, 1, 2, 3, 3]
+    lead = torch.tensor([[[float("nan")], [2.0], [4.0]]])
+    assert _fill_nan(lead, torch.tensor([[False, True, True]])).flatten().tolist() == [2, 2, 4]

@@ -49,3 +49,22 @@ def test_event_panel_shape_and_no_fill():
 def test_event_panel_rejects_non_daily():
     with pytest.raises(ValueError):
         data.event_panel("fomc_meetings")
+
+
+def test_sql_connection_is_read_only(tmp_path):
+    from fedcore.data import db
+
+    out = tmp_path / "x.csv"
+    with db.connect() as con:
+        for bad in (
+            f"COPY (SELECT 1) TO '{out.as_posix()}'",
+            f"ATTACH '{(tmp_path / 'a.db').as_posix()}'",
+            f"SELECT * FROM read_csv('{__file__.replace(chr(92), '/')}')",
+            "SET enable_external_access=true",
+            "INSTALL httpfs",
+        ):
+            with pytest.raises(Exception):
+                con.execute(bad)
+        for view in db.tables():  # every catalog view still resolves under the lock
+            con.execute(f'SELECT count(*) FROM "{view}"').fetchone()
+    assert not out.exists()

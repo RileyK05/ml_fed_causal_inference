@@ -1,4 +1,4 @@
-"""Ad-hoc SQL over every catalog dataset (DuckDB, read-only views over the files)."""
+"""Ad-hoc SQL over every catalog dataset (DuckDB over the catalog files; reads only core/data, cannot write)."""
 import _common as c  # noqa: I001
 
 import streamlit as st

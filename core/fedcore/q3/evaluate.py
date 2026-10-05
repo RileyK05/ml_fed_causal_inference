@@ -157,7 +157,8 @@ def run_arms(
 ) -> pd.DataFrame:
     """Build one panel, score every arm, save each run, and return a comparison table.
 
-    ``data="real"`` scores the WRDS firm panel (``fedcore.q3.real``); ``noise`` and
+    ``data="real"`` scores the WRDS firm panel (``fedcore.q3.real``) and needs explicit
+    ``min_train`` and ``test_size``; ``noise`` and
     ``panel_kwargs`` apply to synthetic data only. When ``min_train`` and ``test_size`` are left at their defaults and the panel
     has fewer than 80 meetings, both are reduced so the small end-to-end test
     still produces a fold. The saved params record that choice.
@@ -170,6 +171,8 @@ def run_arms(
     if data == "real":
         if panel_kwargs:
             raise ValueError(f"panel options apply to synthetic data only: {sorted(panel_kwargs)}")
+        if min_train is None or test_size is None:
+            raise ValueError("data='real' needs explicit min_train and test_size (docs/training-plan.md, D1)")
         from fedcore.q3.real import load_real_panel
 
         panel, _, meta = load_real_panel()

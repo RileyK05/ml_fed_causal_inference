@@ -11,11 +11,17 @@ from __future__ import annotations
 import duckdb
 import pandas as pd
 
+from fedcore.config import DATA
 from fedcore.data.catalog import catalog
 
 
 def connect() -> duckdb.DuckDBPyConnection:
-    """In-memory DuckDB connection with one view per existing catalog dataset."""
+    """In-memory DuckDB connection with one view per existing catalog dataset.
+
+    Locked down after the views exist: files are readable only under ``core/data`` (where the
+    views point), nothing can be written, attached or installed, and the settings cannot be
+    changed. The SQL console and CLI pass user text straight to this connection.
+    """
     con = duckdb.connect(":memory:")
     for ds in catalog().values():
         if not ds.exists:
@@ -30,6 +36,9 @@ def connect() -> duckdb.DuckDBPyConnection:
             f'CREATE VIEW "{ds.name}" AS SELECT * FROM read_csv(\'{path}\', header=true, '
             f"nullstr=[{nulls}], sample_size=-1)"
         )
+    con.execute(f"SET allowed_directories=['{DATA.as_posix().replace(chr(39), chr(39) * 2)}']")
+    con.execute("SET enable_external_access=false")
+    con.execute("SET lock_configuration=true")
     return con
 
 

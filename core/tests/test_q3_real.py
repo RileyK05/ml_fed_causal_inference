@@ -121,7 +121,9 @@ def test_run_arms_real_uses_the_cached_panel(tmp_path, monkeypatch):
     meta = {"inputs": {"crsp_daily": "abc123"}}
     monkeypatch.setattr("fedcore.q3.real.load_real_panel", lambda: (tiny, None, meta))
     store = ResultStore(tmp_path)
-    run_arms({"pooled": BASELINES["pooled"]}, store, data="real", seeds=(0,))
+    with pytest.raises(ValueError, match="explicit min_train"):
+        run_arms({"pooled": BASELINES["pooled"]}, store, data="real", seeds=(0,))
+    run_arms({"pooled": BASELINES["pooled"]}, store, data="real", seeds=(0,), min_train=8, test_size=2)
     params = store.runs()[-1].manifest["params"]
     assert params["data"] == "real" and params["panel_inputs"] == meta["inputs"]
     assert params["noise"] is None

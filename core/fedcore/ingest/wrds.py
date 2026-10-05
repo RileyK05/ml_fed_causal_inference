@@ -190,7 +190,7 @@ def resolve(db) -> dict[str, Source | None]:
         for src in ds.sources:
             cols = _columns(db, src)
             if cols is None:
-                status = "missing table"
+                status = "missing table (or library not in your subscription)"
             elif not set(src.columns) <= cols:
                 status = f"missing columns {sorted(set(src.columns) - cols)}"
             elif not _readable(db, src):
@@ -208,6 +208,13 @@ def _where(src: Source, chosen: dict[str, Source | None]) -> str:
     link = chosen.get("ccm_link")
     link_sql = f"{link.library}.{link.table} WHERE {link.where.format(members=members)}" if link else "(SELECT NULL AS gvkey) x"
     return src.where.format(start=START, members=members, link=link_sql)
+
+
+def _write_atomic(frame, path) -> None:
+    """Write beside the target, then rename: a crash never leaves a half-written parquet part."""
+    tmp = path.with_name(path.name + ".tmp")
+    frame.to_parquet(tmp, index=False)
+    os.replace(tmp, path)
 
 
 def pull(db, chosen: dict[str, Source | None], only: set[str] | None = None) -> dict:
@@ -232,13 +239,13 @@ def pull(db, chosen: dict[str, Source | None], only: set[str] | None = None) -> 
                 part = db.raw_sql(f"{sql} AND {date_col} BETWEEN '{year}-01-01' AND '{year}-12-31'")
                 if part.empty:  # the vintage ends before this year
                     continue
-                part.to_parquet(folder / f"{year}.parquet", index=False)
+                _write_atomic(part, folder / f"{year}.parquet")
                 rows += len(part)
                 print(f"  {ds.name} {year}: {len(part):,} rows", flush=True)
             path = f"{ds.name}/"
         else:
             frame = db.raw_sql(sql)
-            frame.to_parquet(OUT / f"{ds.name}.parquet", index=False)
+            _write_atomic(frame, OUT / f"{ds.name}.parquet")
             rows = len(frame)
             path = f"{ds.name}.parquet"
             print(f"  {ds.name}: {rows:,} rows", flush=True)
@@ -269,6 +276,9 @@ def main(argv: list[str] | None = None) -> None:
         missing = [name for name, src in chosen.items() if src is None and name != "crsp_delist"]
         if missing:
             sys.exit(f"no usable source for: {', '.join(missing)}. Nothing was downloaded.")
+        unresolved = sorted(name for name in (only or ()) if chosen[name] is None)
+        if unresolved:
+            sys.exit(f"no usable source for requested: {', '.join(unresolved)}. Nothing was downloaded.")
         if args.command == "pull":
             pull(db, chosen, only)
             print(f"Done. Files in {OUT}")

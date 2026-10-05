@@ -266,3 +266,14 @@ def test_pretrained_top_freezes_the_lower_stack():
     assert not enc.blocks.layers[0].linear1.weight.requires_grad
     assert enc.blocks.layers[-1].linear1.weight.requires_grad
     assert not enc.blocks.layers[0].linear1.weight.grad
+
+
+def test_pretrained_arm_refuses_real_panels():
+    """Only a synthetic checkpoint exists: a pretrained arm on real data (no b_true) must not run."""
+    import dataclasses
+
+    from fedcore.q3 import make_synthetic_panel
+
+    panel = dataclasses.replace(make_synthetic_panel(n_firms=6, n_meetings=6, seed=0), a_true=None, b_true=None)
+    with pytest.raises(NotImplementedError, match="pre-cutoff"):
+        TxArm(init="pretrained", adapt="frozen", max_epochs=1).fit(panel)

@@ -286,7 +286,7 @@ def pretrain(
     )
     return PretrainResult(
         encoder=encoder,
-        state_dict={k: v.detach().clone() for k, v in encoder.state_dict().items()},
+        state_dict={k: v.detach().cpu().clone() for k, v in encoder.state_dict().items()},
         train_loss=train_curve,
         val_loss=val_curve,
         best_epoch=best_epoch,

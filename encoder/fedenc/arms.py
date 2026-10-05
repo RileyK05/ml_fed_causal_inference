@@ -53,7 +53,7 @@ def get_pretrained(
     default = Path(tempfile.gettempdir()) / f"fedenc_pretrain_{key[0]}_{key[1]}_{key[2]}_{key[3]:g}.pt"
     cache = Path(os.environ.get("FEDENC_PRETRAIN_CACHE") or default)
     if cache.exists():
-        payload = torch.load(cache, weights_only=False)
+        payload = torch.load(cache, weights_only=False, map_location="cpu")
         if payload.get("key") == key:
             _PRETRAIN_CACHE[key] = payload["result"]
             return _PRETRAIN_CACHE[key]
@@ -62,6 +62,7 @@ def get_pretrained(
         PatchTransformerEncoder(), windows, mask, epochs=epochs, lr=lr, seed=seed,
         device=resolve_device(device),
     )
+    result.encoder.cpu()  # a GPU-trained cache must load on a CPU-only machine
     try:
         torch.save({"key": key, "result": result}, cache)
     except OSError:
@@ -142,6 +143,11 @@ class TxArm:
             kw.setdefault("freeze_encoder", True)
         if self.init == "pretrained" and self.adapt == "full":
             kw.setdefault("encoder_lr", float(kw.get("lr", 1e-3)) / 10.0)
+        if self.init == "pretrained" and panel.b_true is None:
+            raise NotImplementedError(
+                "pre-trained arms only have a synthetic checkpoint; real data needs a pre-cutoff "
+                "checkpoint from fedcore.q3.real.pretrain_corpus (docs/training-plan.md, D3)"
+            )
         encoder = self._encoder()
         self.model = ResponseModel(
             encoder, n_fund=panel.fundamentals.shape[1], n_ctx=panel.context.shape[1]

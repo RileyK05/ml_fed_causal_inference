@@ -20,6 +20,7 @@ from torch import nn
 from fedcore.q3.contracts import Q3Panel
 
 MEETINGS_PER_BATCH = 4
+CLIP = 5.0  # inputs are clipped at median ± CLIP * IQR
 
 
 def seed_everything(seed: int) -> None:
@@ -363,4 +364,4 @@ def _med_iqr(values: np.ndarray) -> tuple[float, float]:
 
 def _scale(values: np.ndarray, median: np.ndarray, iqr: np.ndarray) -> np.ndarray:
     z = (np.asarray(values, dtype=np.float64) - median) / iqr
-    return np.clip(z, -5.0, 5.0).astype(np.float32)
+    return np.clip(z, -CLIP, CLIP).astype(np.float32)

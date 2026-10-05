@@ -7,7 +7,10 @@ interacted with the shock. ``b_hat`` is the shock-coefficient part on each row.
 prediction at s+0.5 and s-0.5.
 ``summary_nn`` is ``ResponseModel(SummaryEncoder)`` through the shared trainer.
 
-Feature medians, and the ridge z-scores, are fit on the training panel only.
+Feature medians, IQRs and the ridge z-scores are fit on the training panel only. Every
+feature is clipped at the median ± 5 IQR, the same rule the neural trainer applies, so a
+few extreme book-to-market or volume values cannot dominate ridge while the networks
+never see them.
 """
 from __future__ import annotations
 
@@ -20,6 +23,7 @@ from sklearn.linear_model import Ridge
 from fedcore.q3.contracts import Q3Panel, SummaryEncoder
 from fedcore.q3.features import summary_features
 from fedcore.q3.model import ResponseModel
+from fedcore.q3.train import _columns, CLIP
 from fedcore.q3.train import fit as train_fit
 from fedcore.q3.train import predict as train_predict
 from fedcore.q3.train import seed_everything
@@ -50,14 +54,17 @@ def _impute(values: np.ndarray, median: np.ndarray) -> np.ndarray:
 
 
 class _Design:
-    """Median-imputed [Z, s·Z, s]. Medians come from the fit panel only."""
+    """Median-imputed, clipped [Z, s·Z, s]. Medians and IQRs come from the fit panel only."""
 
     def fit(self, panel: Q3Panel) -> "_Design":
-        self.median_ = _column_median(_blocks(panel))
+        blocks = _blocks(panel)
+        self.median_ = _column_median(blocks)
+        _, iqr = _columns(blocks, np.isfinite(blocks))
+        self.lo_, self.hi_ = self.median_ - CLIP * iqr, self.median_ + CLIP * iqr
         return self
 
     def Z(self, panel: Q3Panel) -> np.ndarray:
-        return _impute(_blocks(panel), self.median_)
+        return np.clip(_impute(_blocks(panel), self.median_), self.lo_, self.hi_)
 
     def matrix(self, panel: Q3Panel, shock: np.ndarray | None = None) -> np.ndarray:
         z = self.Z(panel)

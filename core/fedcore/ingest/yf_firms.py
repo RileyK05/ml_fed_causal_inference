@@ -35,6 +35,11 @@ RETRIES = 3
 RETRY_PAUSE = 20  # seconds
 
 
+def _cik(col: pd.Series) -> pd.Series:
+    """Zero-padded 10-digit SEC CIK text; a float 12345.0 or a missing value does not poison the match."""
+    return col.astype("string").str.replace(r"\.0$", "", regex=True).str.zfill(10)
+
+
 def wiki_constituents() -> pd.DataFrame:
     """Today's S&P 500 list from Wikipedia, saved as a dated raw snapshot."""
     import requests
@@ -42,7 +47,7 @@ def wiki_constituents() -> pd.DataFrame:
     resp = requests.get(WIKI_URL, headers={"User-Agent": USER_AGENT}, timeout=30)
     resp.raise_for_status()
     table = next(t for t in pd.read_html(io.StringIO(resp.text)) if {"Symbol", "CIK"} <= set(t.columns))
-    table["CIK"] = table["CIK"].astype(str).str.zfill(10)
+    table["CIK"] = _cik(table["CIK"])
     WIKI.mkdir(parents=True, exist_ok=True)
     table.to_csv(WIKI / "sp500_constituents.csv", index=False)
     return table
@@ -67,14 +72,15 @@ def holdout_universe(wiki: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
     link = link.sort_values("linkprim", ascending=False).drop_duplicates("lpermno")  # P before C
     link = link.assign(permno=link["lpermno"].astype("int64"), gvkey=link["gvkey"].astype(str))
     company = pd.read_parquet(RAW / "wrds" / "comp_company.parquet").assign(
-        gvkey=lambda d: d["gvkey"].astype(str), cik=lambda d: d["cik"].astype(str).str.zfill(10)
+        gvkey=lambda d: d["gvkey"].astype(str), cik=lambda d: _cik(d["cik"])
     )
     firms = firms.merge(link[["permno", "gvkey"]], on="permno", how="left").merge(
         company[["gvkey", "conm", "cik"]], on="gvkey", how="left"
     )
 
     names = pd.read_parquet(RAW / "wrds" / "crsp_names.parquet")
-    names = names[pd.to_datetime(names["secinfoenddt"]) >= crsp_end].drop_duplicates("permno", keep="last")
+    live = (pd.to_datetime(names["secinfostartdt"]) <= crsp_end) & (pd.to_datetime(names["secinfoenddt"]).fillna(crsp_end) >= crsp_end)
+    names = names[live].drop_duplicates("permno", keep="last")
     symbols = set(wiki["Symbol"])
 
     def crsp_symbol(row) -> str | None:
@@ -95,7 +101,7 @@ def holdout_universe(wiki: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
     firms.loc[fill & firms["Symbol"].isin(taken), ["Symbol", "match"]] = None  # never reuse a symbol
 
     firms["ticker"] = firms["Symbol"].str.replace(".", "-", regex=False)  # yfinance: BRK.B -> BRK-B
-    matched = firms.dropna(subset=["ticker"]).drop_duplicates("permno")
+    matched = firms.dropna(subset=["ticker"]).drop_duplicates("permno").drop_duplicates("ticker")  # bars merge on ticker
     unmatched = firms[~firms["permno"].isin(matched["permno"])]
     cols = ["permno", "gvkey", "cik", "conm", "ticker", "match"]
     return matched[cols].reset_index(drop=True), unmatched.reset_index(drop=True)

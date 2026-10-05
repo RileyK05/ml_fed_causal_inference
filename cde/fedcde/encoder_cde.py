@@ -79,40 +79,37 @@ def _fill_nan(path: Tensor, mask: Tensor) -> Tensor:
     """Vectorised NaN fill: leading -> first obs, interior -> linear, trailing -> last obs.
 
     Equivalent to ``torchcde``'s own missing-value handling but vectorised. ``path`` is
-    ``(B, T, C')``; ``mask`` is the ``(B, T)`` observed mask (time/obs channels are never
-    NaN and pass through).
+    ``(B, T, C')``; ``mask`` is the ``(B, T)`` observed mask. Only NaN entries are filled:
+    the time and obs-count channels are finite on unobserved days and pass through. A row
+    with no observation at all becomes zeros.
     """
     b, t, c = path.shape
     idx = torch.arange(t, device=path.device, dtype=path.dtype).expand(b, t)
-    m = mask
 
-    last_idx = torch.where(m, idx, torch.full_like(idx, -1.0)).cummax(dim=1).values
+    last_idx = torch.where(mask, idx, torch.full_like(idx, -1.0)).cummax(dim=1).values
     next_idx = (
-        torch.where(m, idx, torch.full_like(idx, float(t)))
+        torch.where(mask, idx, torch.full_like(idx, float(t)))
         .flip(1)
         .cummin(dim=1)
         .values.flip(1)
     )
-    has_prev = last_idx >= 0
-    has_next = next_idx <= t - 1
+    has_prev = (last_idx >= 0).unsqueeze(-1)
+    has_next = (next_idx <= t - 1).unsqueeze(-1)
     li = last_idx.clamp(min=0).long()
     ni = next_idx.clamp(max=t - 1).long()
 
-    big = torch.where(m.unsqueeze(-1), path, torch.full_like(path, -1e30))
-    ff = big.cummax(dim=1).values
-    ff = torch.where(ff <= -1e29, torch.zeros_like(ff), ff)
-
-    prev_val = torch.gather(ff, 1, li.unsqueeze(-1).expand(-1, -1, c))
+    prev_val = torch.gather(path, 1, li.unsqueeze(-1).expand(-1, -1, c))
     next_val = torch.gather(path, 1, ni.unsqueeze(-1).expand(-1, -1, c))
-    next_val = torch.where(torch.isfinite(next_val), next_val, prev_val)
 
     denom = (ni - li).clamp(min=1).to(path.dtype)
-    ratio = (idx - li.to(path.dtype)) / denom
-    interp = prev_val + ratio.unsqueeze(-1) * (next_val - prev_val)
+    ratio = ((idx - li.to(path.dtype)) / denom).unsqueeze(-1)
+    interp = prev_val + ratio * (next_val - prev_val)
 
-    out = torch.where((has_prev & has_next).unsqueeze(-1), interp, ff)
-    out = torch.where(m.unsqueeze(-1), out, torch.zeros_like(out))
-    return out
+    zeros = torch.zeros_like(path)
+    filled = torch.where(
+        has_prev & has_next, interp, torch.where(has_prev, prev_val, torch.where(has_next, next_val, zeros))
+    )
+    return torch.where(torch.isfinite(path), path, filled)
 
 
 class _VectorField(nn.Module):
