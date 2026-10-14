@@ -12,7 +12,9 @@ from fedcore.q3.synthetic import make_pretrain_windows, make_synthetic_panel
 
 from fedenc.encoder_transformer import PatchTransformerEncoder
 from fedenc.pretrain import _choose_masks, _masked_loss, pretrain, window_end_order
-from fedenc.arms import TxArm, get_pretrained
+from fedenc.arms import TxArm
+from fedenc.checkpoint import EncoderCheckpoint
+from pathlib import Path
 
 
 def _random_history(n=3, t=L, c=5, p_obs=0.85, seed=0):
@@ -247,33 +249,53 @@ def test_txarm_fit_predict_smoke():
 
 
 def test_pretrained_top_freezes_the_lower_stack():
-    result = get_pretrained(n_windows=60, seed=1, epochs=1)
+    source = PatchTransformerEncoder()
+    state = {k: v.clone() for k, v in source.state_dict().items()}
+    checkpoint = EncoderCheckpoint(Path("unused"), state,
+                                   {"hist_median": np.zeros(5), "hist_iqr": np.ones(5)},
+                                   source.get_config(), {"available_through": "1990-01-01"}, {}, "test")
     panel = make_synthetic_panel(n_firms=8, n_meetings=12, noise="easy", seed=0)
     arm = TxArm(
         seed=0,
         init="pretrained",
         adapt="top",
-        pretrain_kwargs={"n_windows": 60, "seed": 1, "epochs": 1},
+        checkpoint=checkpoint,
         max_epochs=2,
         patience=2,
     )
     arm.fit(panel, seed=0)
     enc = arm.model.encoder
-    assert torch.equal(enc.proj.weight, result.state_dict["proj.weight"])
-    assert torch.equal(enc.pos, result.state_dict["pos"])
-    assert torch.equal(enc.blocks.layers[0].linear1.weight, result.state_dict["blocks.layers.0.linear1.weight"])
+    assert torch.equal(enc.proj.weight, state["proj.weight"])
+    assert torch.equal(enc.pos, state["pos"])
+    assert torch.equal(enc.blocks.layers[0].linear1.weight, state["blocks.layers.0.linear1.weight"])
     assert not enc.proj.weight.requires_grad
     assert not enc.blocks.layers[0].linear1.weight.requires_grad
     assert enc.blocks.layers[-1].linear1.weight.requires_grad
     assert not enc.blocks.layers[0].linear1.weight.grad
 
 
-def test_pretrained_arm_refuses_real_panels():
-    """Only a synthetic checkpoint exists: a pretrained arm on real data (no b_true) must not run."""
+def test_pretrained_arm_refuses_missing_checkpoint():
+    """Real data requires an explicit dated checkpoint; never auto-pretrain."""
     import dataclasses
 
     from fedcore.q3 import make_synthetic_panel
 
     panel = dataclasses.replace(make_synthetic_panel(n_firms=6, n_meetings=6, seed=0), a_true=None, b_true=None)
-    with pytest.raises(NotImplementedError, match="pre-cutoff"):
+    with pytest.raises(ValueError, match="pre-cutoff"):
         TxArm(init="pretrained", adapt="frozen", max_epochs=1).fit(panel)
+
+
+def test_masked_tokens_retain_positions_without_exposing_hidden_values():
+    torch.manual_seed(0)
+    enc = PatchTransformerEncoder(dropout=0)
+    enc.eval()
+    x, mask = _random_history(n=1)
+    choice = torch.zeros(1, enc.n_patches, dtype=torch.bool)
+    choice[:, -2:] = True
+    changed = x.clone()
+    changed[:, -10:] = 10000
+    with torch.no_grad():
+        tokens, _ = enc.forward_tokens(x, mask, choice)
+        other, _ = enc.forward_tokens(changed, mask, choice)
+    assert torch.allclose(tokens, other, atol=1e-6)
+    assert not torch.allclose(tokens[:, -1], tokens[:, -2], atol=1e-6)

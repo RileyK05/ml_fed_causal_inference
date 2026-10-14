@@ -30,9 +30,12 @@ def seed_everything(seed: int) -> None:
 
 
 def resolve_device(device: str | torch.device | None = None) -> torch.device:
-    """``None`` picks CUDA when available, else CPU. The trainer follows the model's device."""
+    """``None`` picks CUDA, then Intel XPU, when available, else CPU. The trainer follows the model's device."""
     if device is None:
-        return torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        if torch.cuda.is_available():
+            return torch.device("cuda")
+        xpu = getattr(torch, "xpu", None)  # Intel GPUs; needs the XPU build of torch
+        return torch.device("xpu" if xpu is not None and xpu.is_available() else "cpu")
     return torch.device(device)
 
 

@@ -8,8 +8,6 @@ corpus ends.
 """
 from __future__ import annotations
 
-import os
-import tempfile
 from pathlib import Path
 
 import numpy as np
@@ -19,10 +17,12 @@ from torch import nn
 from fedcore.q3 import Q3Panel, ResponseModel, make_pretrain_windows
 from fedcore.q3.train import fit as train_fit
 from fedcore.q3.train import predict as train_predict
-from fedcore.q3.train import resolve_device, seed_everything
+from fedcore.q3.train import resolve_device, seed_everything, validation_meetings
 
 from fedenc.encoder_transformer import PatchTransformerEncoder
 from fedenc.pretrain import PretrainResult, pretrain
+from fedenc.checkpoint import EncoderCheckpoint, load_checkpoint
+from fedenc.train import fit_transferred
 
 PRETRAIN_SEED = 7777
 PRETRAIN_WINDOWS = 20000
@@ -42,31 +42,21 @@ def get_pretrained(
     lr: float = PRETRAIN_LR,
     device: str | None = None,
 ) -> PretrainResult:
-    """Pre-train once and cache. Deterministic: same parameters, same checkpoint.
+    """Legacy synthetic diagnostic, explicit calls only; cache in memory, never write files.
 
-    Worker processes share the checkpoint through a scratch file in the system
-    temp directory (``FEDENC_PRETRAIN_CACHE`` overrides the path); compute cache only.
+    This is training and requires chat authorization outside tiny unit-test smoke fits.
+    Real and synthetic TxArms now load explicit saved checkpoints instead of calling this.
     """
     key = (int(n_windows), int(seed), int(epochs), float(lr))
     if key in _PRETRAIN_CACHE:
         return _PRETRAIN_CACHE[key]
-    default = Path(tempfile.gettempdir()) / f"fedenc_pretrain_{key[0]}_{key[1]}_{key[2]}_{key[3]:g}.pt"
-    cache = Path(os.environ.get("FEDENC_PRETRAIN_CACHE") or default)
-    if cache.exists():
-        payload = torch.load(cache, weights_only=False, map_location="cpu")
-        if payload.get("key") == key:
-            _PRETRAIN_CACHE[key] = payload["result"]
-            return _PRETRAIN_CACHE[key]
+    seed_everything(seed)
     windows, mask = make_pretrain_windows(n_windows, seed=seed)
     result = pretrain(
         PatchTransformerEncoder(), windows, mask, epochs=epochs, lr=lr, seed=seed,
         device=resolve_device(device),
     )
     result.encoder.cpu()  # a GPU-trained cache must load on a CPU-only machine
-    try:
-        torch.save({"key": key, "result": result}, cache)
-    except OSError:
-        pass
     _PRETRAIN_CACHE[key] = result
     return result
 
@@ -88,6 +78,7 @@ class TxArm:
         history_only: bool = False,
         encoder_kwargs: dict | None = None,
         pretrain_kwargs: dict | None = None,
+        checkpoint: str | Path | EncoderCheckpoint | None = None,
         device: str | None = None,
         **train_kwargs,
     ):
@@ -101,6 +92,10 @@ class TxArm:
         self.history_only = bool(history_only)
         self.encoder_kwargs = dict(encoder_kwargs or {})
         self.pretrain_kwargs = dict(pretrain_kwargs or {})
+        if self.pretrain_kwargs:
+            raise ValueError("pretrain_kwargs no longer starts training inside arms; pass a checkpoint")
+        self.checkpoint = checkpoint
+        self.loaded_checkpoint: EncoderCheckpoint | None = None
         self.device = device
         self.train_kwargs = dict(train_kwargs)
         self.model: nn.Module | None = None
@@ -127,11 +122,20 @@ class TxArm:
         )
 
     def _encoder(self) -> PatchTransformerEncoder:
-        enc = PatchTransformerEncoder(**self.encoder_kwargs)
-        if self.init == "pretrained":
-            enc.load_state_dict(get_pretrained(device=self.device, **self.pretrain_kwargs).state_dict)
-            if self.adapt == "top":
+        if self.init == "pretrained" and self.checkpoint is None:
+            raise ValueError("pretrained arms require an explicit pre-cutoff checkpoint; no automatic pretraining")
+        if self.checkpoint is not None:
+            checkpoint = self.checkpoint if isinstance(self.checkpoint, EncoderCheckpoint) else load_checkpoint(self.checkpoint)
+            self.loaded_checkpoint = checkpoint
+            if any(checkpoint.config.get(k) != v for k, v in self.encoder_kwargs.items()):
+                raise ValueError("encoder_kwargs must match checkpoint architecture")
+            # Scratch uses the same ordinary-day scaler/architecture, but random
+            # weights. This isolates initialization from normalization changes.
+            enc = checkpoint.encoder() if self.init == "pretrained" else PatchTransformerEncoder(**checkpoint.config)
+            if self.init == "pretrained" and self.adapt == "top":
                 enc.freeze([enc.proj, enc.pos, *enc.blocks.layers[:-1]])
+        else:
+            enc = PatchTransformerEncoder(**self.encoder_kwargs)
         return enc
 
     def fit(self, panel: Q3Panel, **kwargs) -> None:
@@ -143,21 +147,28 @@ class TxArm:
             kw.setdefault("freeze_encoder", True)
         if self.init == "pretrained" and self.adapt == "full":
             kw.setdefault("encoder_lr", float(kw.get("lr", 1e-3)) / 10.0)
-        if self.init == "pretrained" and panel.b_true is None:
-            raise NotImplementedError(
-                "pre-trained arms only have a synthetic checkpoint; real data needs a pre-cutoff "
-                "checkpoint from fedcore.q3.real.pretrain_corpus (docs/training-plan.md, D3)"
-            )
         encoder = self._encoder()
+        if self.loaded_checkpoint is not None:
+            # Pretraining validation also consumes labels, so precede the *inner*
+            # early-stopping block, not just the outer test. Check before any fit.
+            val_m = validation_meetings(panel, kw.get("val_frac", 0.15))
+            self.loaded_checkpoint.require_before(val_m.min())
         self.model = ResponseModel(
             encoder, n_fund=panel.fundamentals.shape[1], n_ctx=panel.context.shape[1]
         ).to(resolve_device(self.device))
-        self.fit_result = train_fit(self.model, self._prep(panel), seed=seed, **kw)
+        if self.loaded_checkpoint is None:
+            self.fit_result = train_fit(self.model, self._prep(panel), seed=seed, **kw)
+        else:
+            self.fit_result = fit_transferred(
+                self.model, self._prep(panel), self.loaded_checkpoint.scaler, seed=seed, **kw
+            )
         self.scaler = self.fit_result.scaler
 
     def predict(self, panel: Q3Panel):
         if self.model is None or self.scaler is None:
             raise RuntimeError("fit the arm before predict")
+        if self.loaded_checkpoint is not None:
+            self.loaded_checkpoint.require_before(panel.meetings().min())
         return train_predict(self.model, self._prep(panel), self.scaler)
 
 
@@ -167,3 +178,15 @@ ARMS = {
     "tx_pre_top": lambda seed: TxArm(seed=seed, init="pretrained", adapt="top", **TRAIN_BUDGET),
     "tx_pre_full": lambda seed: TxArm(seed=seed, init="pretrained", adapt="full", **TRAIN_BUDGET),
 }
+
+
+def make_arms(checkpoint, *, train_kwargs=None):
+    """Bind an explicit checkpoint to the transfer arms; preserve its architecture for scratch."""
+    cp = checkpoint if isinstance(checkpoint, EncoderCheckpoint) else load_checkpoint(checkpoint)
+    budget = {**TRAIN_BUDGET, **(train_kwargs or {})}
+    return {
+        "tx_scratch": lambda seed: TxArm(seed=seed, checkpoint=cp, **budget),
+        "tx_pre_frozen": lambda seed: TxArm(seed=seed, init="pretrained", adapt="frozen", checkpoint=cp, **budget),
+        "tx_pre_top": lambda seed: TxArm(seed=seed, init="pretrained", adapt="top", checkpoint=cp, **budget),
+        "tx_pre_full": lambda seed: TxArm(seed=seed, init="pretrained", adapt="full", checkpoint=cp, **budget),
+    }

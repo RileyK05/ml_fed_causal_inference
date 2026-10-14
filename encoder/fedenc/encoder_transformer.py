@@ -57,6 +57,8 @@ class PatchTransformerEncoder(HistoryEncoder):
         self.d_model = int(d_model)
         self.n_layers = int(n_layers)
         self.n_heads = int(n_heads)
+        self.dim_feedforward = int(dim_feedforward)
+        self.dropout = float(dropout)
         self.pool = pool
         self.out_dim = self.d_model
         self.n_patches = -(-L // self.patch_len)  # ceil(252 / patch_len): 51 for patch_len 5
@@ -85,6 +87,13 @@ class PatchTransformerEncoder(HistoryEncoder):
         nn.init.normal_(self.mask_token, std=0.02)
         if self.cls_token is not None:
             nn.init.normal_(self.cls_token, std=0.02)
+
+    def get_config(self) -> dict:
+        """Architecture required to restore a checkpoint without guessed defaults."""
+        return {name: getattr(self, name) for name in (
+            "n_channels", "patch_len", "d_model", "n_layers", "n_heads",
+            "dim_feedforward", "dropout", "pool",
+        )}
 
     # ------------------------------------------------------------------ patching
 
@@ -126,10 +135,12 @@ class PatchTransformerEncoder(HistoryEncoder):
     def _encode(self, x: Tensor, mask: Tensor, patch_mask: Tensor | None = None) -> tuple[Tensor, Tensor]:
         """Full token sequence (with the cls token first when pooling is cls) and patch validity."""
         patches, valid = self.patchify(x, mask)
-        tokens = self.proj(patches) + self.pos.unsqueeze(0).to(dtype=self.proj.weight.dtype)
+        tokens = self.proj(patches)
         if patch_mask is not None:
             pm = patch_mask.bool() & valid
             tokens = torch.where(pm.unsqueeze(-1), self.mask_token.to(dtype=tokens.dtype), tokens)
+        # Hide values while retaining the location of each reconstruction target.
+        tokens = tokens + self.pos.unsqueeze(0).to(dtype=tokens.dtype)
         key_pad = ~valid
         if self.cls_token is not None:
             cls = self.cls_token.to(dtype=tokens.dtype).expand(tokens.shape[0], 1, -1)
