@@ -2,9 +2,11 @@
 
 ARMS follow the shared arm protocol (``fit(panel, **kwargs)`` / ``predict``), so they
 plug into ``run_arms`` in ``fedcore.q3``. ``init`` picks scratch vs pre-trained weights;
-``adapt`` picks how much of the encoder fine-tunes (full / frozen / top block only).
-On real data a pre-trained checkpoint may only serve test folds that start after its
-corpus ends.
+``adapt`` picks how much of the encoder fine-tunes (full / frozen / top block only /
+staged: heads first with the encoder frozen, then everything).
+On real data a pre-trained checkpoint may only serve folds whose inner validation starts
+after its corpus ends. Pass one checkpoint per fold and each fit uses the latest one
+that qualifies.
 """
 from __future__ import annotations
 
@@ -21,7 +23,7 @@ from fedcore.q3.train import resolve_device, seed_everything, validation_meeting
 
 from fedenc.encoder_transformer import PatchTransformerEncoder
 from fedenc.pretrain import PretrainResult, pretrain
-from fedenc.checkpoint import EncoderCheckpoint, load_checkpoint
+from fedenc.checkpoint import EncoderCheckpoint, load_checkpoint, pick_checkpoint
 from fedenc.train import fit_transferred
 
 PRETRAIN_SEED = 7777
@@ -66,6 +68,9 @@ class TxArm:
 
     ``init``    "scratch" | "pretrained"
     ``adapt``   "full" (all weights) | "frozen" (freeze_encoder) | "top" (unfreeze top block only)
+                | "staged" (heads with the encoder frozen, then all weights; pretrained only)
+    ``checkpoint``  one checkpoint, or a list (one per fold): each fit picks the latest
+                    one available before its inner validation block
     ``history_only``  zero fundamentals and context at fit and predict (E4 ablation)
     ``device``  None = CUDA when available, else CPU
     """
@@ -84,8 +89,10 @@ class TxArm:
     ):
         if init not in ("scratch", "pretrained"):
             raise ValueError(f"unknown init {init!r}")
-        if adapt not in ("full", "frozen", "top"):
+        if adapt not in ("full", "frozen", "top", "staged"):
             raise ValueError(f"unknown adapt {adapt!r}")
+        if adapt == "staged" and init != "pretrained":
+            raise ValueError("staged adaptation needs pretrained weights to protect")
         self.seed = int(seed)
         self.init = init
         self.adapt = adapt
@@ -121,11 +128,17 @@ class TxArm:
             b_true=panel.b_true,
         )
 
-    def _encoder(self) -> PatchTransformerEncoder:
+    def _checkpoints(self) -> list[EncoderCheckpoint]:
+        if self.checkpoint is None:
+            return []
+        items = self.checkpoint if isinstance(self.checkpoint, (list, tuple)) else [self.checkpoint]
+        return [c if isinstance(c, EncoderCheckpoint) else load_checkpoint(c) for c in items]
+
+    def _encoder(self, before=None) -> PatchTransformerEncoder:
         if self.init == "pretrained" and self.checkpoint is None:
             raise ValueError("pretrained arms require an explicit pre-cutoff checkpoint; no automatic pretraining")
         if self.checkpoint is not None:
-            checkpoint = self.checkpoint if isinstance(self.checkpoint, EncoderCheckpoint) else load_checkpoint(self.checkpoint)
+            checkpoint = pick_checkpoint(self._checkpoints(), before)
             self.loaded_checkpoint = checkpoint
             if any(checkpoint.config.get(k) != v for k, v in self.encoder_kwargs.items()):
                 raise ValueError("encoder_kwargs must match checkpoint architecture")
@@ -145,18 +158,22 @@ class TxArm:
         seed_everything(seed)
         if self.adapt == "frozen":
             kw.setdefault("freeze_encoder", True)
-        if self.init == "pretrained" and self.adapt == "full":
+        if self.init == "pretrained" and self.adapt in ("full", "staged"):
             kw.setdefault("encoder_lr", float(kw.get("lr", 1e-3)) / 10.0)
-        encoder = self._encoder()
+        if self.adapt == "staged":
+            kw.setdefault("warmup_epochs", int(kw.get("max_epochs", TRAIN_BUDGET["max_epochs"])))
+        # Pretraining validation also consumes labels, so the checkpoint must precede the
+        # *inner* early-stopping block, not just the outer test. Checked before any fit.
+        before = validation_meetings(panel, kw.get("val_frac", 0.15)).min() if self.checkpoint is not None else None
+        encoder = self._encoder(before)
         if self.loaded_checkpoint is not None:
-            # Pretraining validation also consumes labels, so precede the *inner*
-            # early-stopping block, not just the outer test. Check before any fit.
-            val_m = validation_meetings(panel, kw.get("val_frac", 0.15))
-            self.loaded_checkpoint.require_before(val_m.min())
+            self.loaded_checkpoint.require_before(before)
         self.model = ResponseModel(
             encoder, n_fund=panel.fundamentals.shape[1], n_ctx=panel.context.shape[1]
         ).to(resolve_device(self.device))
         if self.loaded_checkpoint is None:
+            if kw.pop("warmup_epochs", 0):
+                raise ValueError("staged adaptation requires a checkpoint")
             self.fit_result = train_fit(self.model, self._prep(panel), seed=seed, **kw)
         else:
             self.fit_result = fit_transferred(
@@ -177,16 +194,23 @@ ARMS = {
     "tx_pre_frozen": lambda seed: TxArm(seed=seed, init="pretrained", adapt="frozen", **TRAIN_BUDGET),
     "tx_pre_top": lambda seed: TxArm(seed=seed, init="pretrained", adapt="top", **TRAIN_BUDGET),
     "tx_pre_full": lambda seed: TxArm(seed=seed, init="pretrained", adapt="full", **TRAIN_BUDGET),
+    "tx_pre_staged": lambda seed: TxArm(seed=seed, init="pretrained", adapt="staged", **TRAIN_BUDGET),
 }
 
 
 def make_arms(checkpoint, *, train_kwargs=None):
-    """Bind an explicit checkpoint to the transfer arms; preserve its architecture for scratch."""
-    cp = checkpoint if isinstance(checkpoint, EncoderCheckpoint) else load_checkpoint(checkpoint)
+    """Bind explicit checkpoint(s) to the transfer arms; preserve the architecture for scratch.
+
+    A list holds one checkpoint per fold; scratch then also takes each fold's history scaler.
+    """
+    items = checkpoint if isinstance(checkpoint, (list, tuple)) else [checkpoint]
+    cps = [c if isinstance(c, EncoderCheckpoint) else load_checkpoint(c) for c in items]
+    cp = cps[0] if len(cps) == 1 else cps
     budget = {**TRAIN_BUDGET, **(train_kwargs or {})}
     return {
         "tx_scratch": lambda seed: TxArm(seed=seed, checkpoint=cp, **budget),
         "tx_pre_frozen": lambda seed: TxArm(seed=seed, init="pretrained", adapt="frozen", checkpoint=cp, **budget),
         "tx_pre_top": lambda seed: TxArm(seed=seed, init="pretrained", adapt="top", checkpoint=cp, **budget),
         "tx_pre_full": lambda seed: TxArm(seed=seed, init="pretrained", adapt="full", checkpoint=cp, **budget),
+        "tx_pre_staged": lambda seed: TxArm(seed=seed, init="pretrained", adapt="staged", checkpoint=cp, **budget),
     }

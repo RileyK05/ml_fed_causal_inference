@@ -1,9 +1,16 @@
-"""Streaming pretraining of history state: predict the next raw return's mean and size.
+"""Streaming pretraining of history state: predict the next raw return.
 
-The head estimates E[r_next | history] (percent) and Var[r_next | history] (percent
-squared) under a Gaussian score. It is temporary; Fed adaptation retains the encoder
-and its history scaler only. Masked reconstruction is an alternative objective on the
-same dated examples.
+``next_return_gaussian``: the head estimates E[r_next | history] (percent) and
+Var[r_next | history] (percent squared) under a Gaussian score.
+``next_return_scaled``: the head estimates the mean only; the squared error is divided
+by a naive trailing variance, so the encoder cannot earn its loss by forecasting volatility.
+The head is temporary; Fed adaptation retains the encoder and its history scaler only.
+Masked reconstruction is an alternative objective on the same dated examples.
+
+For the return objectives, validation also reports how the loss splits between the mean
+and the variance: ``val_nll_naive`` (mean 0, naive variance), ``val_nll_mean_only`` (model
+mean, naive variance) and the model's own loss. A mean that has learned nothing leaves
+``val_nll_mean_only`` at ``val_nll_naive``.
 """
 from __future__ import annotations
 
@@ -16,11 +23,33 @@ import torch
 from torch import nn
 from torch.nn import functional as F
 
+from fedcore.q3.contracts import RET
 from fedcore.q3.train import resolve_device, seed_everything
 from fedenc.pretrain import _choose_masks, _fit_hist_scaler, _scale_windows
 from fedenc.return_corpus import ReturnCorpus
 
-OBJECTIVES = ("next_return_gaussian", "masked_reconstruction")
+OBJECTIVES = ("next_return_gaussian", "masked_reconstruction", "next_return_scaled")
+RETURN_OBJECTIVES = (OBJECTIVES[0], OBJECTIVES[2])
+NAIVE_DAYS = 63      # trailing days for the naive variance
+NAIVE_MIN_OBS = 10   # fewer observed days falls back to the batch median
+NAIVE_FLOOR = 0.01   # percent^2: a 0.1% daily volatility floor
+
+
+def naive_variance(history, mask):
+    """Mean squared raw return (percent^2) over each window's last NAIVE_DAYS days.
+
+    Uses only the history, never the target. Thin windows take the batch median.
+    """
+    ret = history[:, -NAIVE_DAYS:, RET].astype(np.float64)
+    ok = mask[:, -NAIVE_DAYS:] & np.isfinite(ret)
+    n = ok.sum(axis=1)
+    var = np.square(np.where(ok, ret, 0.0)).sum(axis=1) / np.maximum(n, 1)
+    thin = n < NAIVE_MIN_OBS
+    if thin.all():
+        var[:] = 1.0
+    elif thin.any():
+        var[thin] = np.median(var[~thin])
+    return np.maximum(var, NAIVE_FLOOR).astype(np.float32)
 
 
 class GaussianHead(nn.Module):
@@ -82,6 +111,10 @@ def _losses(encoder, head, corpus, rows, scaler, objective, mask_frac, rng, devi
     if objective == OBJECTIVES[0]:
         mean, var = head(encoder(x, m))
         return gaussian_loss(mean, var, torch.as_tensor(returns, device=device))
+    if objective == OBJECTIVES[2]:
+        mean, _ = head(encoder(x, m))
+        naive = torch.as_tensor(naive_variance(history, mask), device=device)
+        return (torch.as_tensor(returns, device=device) - mean).square() / naive
     choice = _choose_masks(encoder, mask, np.arange(len(rows)), mask_frac, rng)
     choice = torch.as_tensor(choice, device=device)
     tokens, valid = encoder.forward_tokens(x, m, patch_mask=choice)
@@ -113,6 +146,49 @@ def evaluate(encoder, head, corpus, groups, scaler, *, objective, mask_frac, bat
     return total / len(groups)
 
 
+def diagnose(encoder, head, corpus, groups, scaler, *, batch_size, device):
+    """Validation split of a return objective; each term is a mean of per-date means.
+
+    nll_naive        mean 0 and naive variance: what volatility alone earns
+    nll_mean_only    model mean and naive variance: what the mean adds
+    r2               1 - MSE of the model mean / MSE of predicting 0
+    xs_r2, xs_corr   within-date (cross-firm) fit of the mean: the part that separates firms
+    """
+    encoder.eval()
+    head.eval()
+    sums = dict(nll_naive=0.0, nll_mean_only=0.0, mse=0.0, mse_zero=0.0, xs_sse=0.0, xs_sst=0.0, xs_corr=0.0)
+    n_corr = 0
+    with torch.inference_mode():
+        for group in groups:
+            means, rets, naive = [], [], []
+            for start in range(0, len(group), batch_size):
+                rows = group[start:start + batch_size]
+                history, mask, returns = corpus.batch(rows)
+                scaled = _scale_windows(history, mask, scaler["hist_median"], scaler["hist_iqr"])
+                x = torch.as_tensor(scaled, device=device)
+                mean, _ = head(encoder(x, torch.as_tensor(mask, device=device)))
+                means.append(mean.double().cpu().numpy())
+                rets.append(np.asarray(returns, dtype=np.float64))
+                naive.append(naive_variance(history, mask).astype(np.float64))
+            m, r, v = np.concatenate(means), np.concatenate(rets), np.concatenate(naive)
+            sums["nll_naive"] += float(np.mean(np.log(v) + r ** 2 / v))
+            sums["nll_mean_only"] += float(np.mean(np.log(v) + (r - m) ** 2 / v))
+            sums["mse"] += float(np.mean((r - m) ** 2))
+            sums["mse_zero"] += float(np.mean(r ** 2))
+            rc, mc = r - r.mean(), m - m.mean()
+            sums["xs_sse"] += float(np.mean((rc - mc) ** 2))
+            sums["xs_sst"] += float(np.mean(rc ** 2))
+            if len(r) > 2 and rc.std() > 0 and mc.std() > 0:
+                sums["xs_corr"] += float(np.corrcoef(rc, mc)[0, 1])
+                n_corr += 1
+    k = len(groups)
+    return dict(
+        nll_naive=sums["nll_naive"] / k, nll_mean_only=sums["nll_mean_only"] / k,
+        r2=1.0 - sums["mse"] / sums["mse_zero"], xs_r2=1.0 - sums["xs_sse"] / sums["xs_sst"],
+        xs_corr=sums["xs_corr"] / n_corr if n_corr else math.nan,
+    )
+
+
 def pretrain_return(
     encoder, corpus: ReturnCorpus, *, objective=OBJECTIVES[0], epochs=30, lr=1e-3,
     seed=0, val_frac=0.1, batch_size=256, dates_per_step=4, weight_decay=1e-4,
@@ -141,7 +217,7 @@ def pretrain_return(
     # Train loss is only a monitor: score a fixed sample of training dates, not the whole corpus.
     pick = np.random.default_rng(seed).choice(len(train_groups), min(train_eval_dates, len(train_groups)), replace=False)
     train_eval_groups = [train_groups[i] for i in np.sort(pick)]
-    head = (GaussianHead(encoder.out_dim) if objective == OBJECTIVES[0] else nn.Sequential(
+    head = (GaussianHead(encoder.out_dim) if objective in RETURN_OBJECTIVES else nn.Sequential(
         nn.Linear(encoder.d_model, 128), nn.ReLU(),
         nn.Linear(128, encoder.patch_len * encoder.n_channels),
     )).to(device)
@@ -172,9 +248,14 @@ def pretrain_return(
         va = evaluate(encoder, head, corpus, val_groups, scaler, **args)
         if not math.isfinite(tr) or not math.isfinite(va):
             raise RuntimeError("nonfinite pretraining evaluation loss")
-        curves.append({"epoch": epoch, "train_loss": tr, "val_loss": va})
+        row = {"epoch": epoch, "train_loss": tr, "val_loss": va}
+        if objective in RETURN_OBJECTIVES:
+            parts = diagnose(encoder, head, corpus, val_groups, scaler, batch_size=batch_size, device=device)
+            row.update({f"val_{key}": value for key, value in parts.items()})
+        curves.append(row)
         if verbose:
-            print(f"epoch={epoch} train={tr:.6g} val={va:.6g}", flush=True)
+            extra = "".join(f" {k}={v:.4g}" for k, v in row.items() if k.startswith("val_") and k != "val_loss")
+            print(f"epoch={epoch} train={tr:.6g} val={va:.6g}{extra}", flush=True)
         if va < best_val:
             best_val, best_epoch, stale = va, epoch, 0
             best_state = {k: v.detach().cpu().clone() for k, v in encoder.state_dict().items()}

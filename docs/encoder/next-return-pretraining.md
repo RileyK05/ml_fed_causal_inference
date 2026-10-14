@@ -22,10 +22,30 @@ Training). Ordinary-day rate loading and Fed-surprise sensitivity are not pretra
 This task is a candidate initialization for useful firm state; improvement on Q3 remains
 to be tested. The head is discarded after pretraining.
 
+**`next_return_scaled`** (added after the first trial): the head predicts the mean only and
+the squared error is divided by a naive trailing variance `v_naive` (mean squared raw
+return over the window's last 63 observed days, floored at 0.01):
+
+```text
+loss_i,t = (r_i,t+1 - m_i,t)² / v_naive_i,t
+```
+
+Under the Gaussian score the encoder can lower its loss by forecasting volatility alone,
+which the `rvol21` input already carries. The scaled loss removes that route: only the mean
+counts. For both return objectives each epoch also logs the validation split:
+`val_nll_naive` (mean 0, naive variance), `val_nll_mean_only` (model mean, naive variance),
+`val_r2` (vs predicting 0), `val_xs_r2` and `val_xs_corr` (within-date, cross-firm fit of
+the mean). In the first trial the Gaussian model's validation loss was 3.346 against 3.401
+for the naive score on the same dates: its whole edge over "mean 0, recent volatility".
+
 Fed adaptation uses the existing model: history + point-in-time fundamentals + context
 feed the fusion network, and `mu = a(z) + b(z)*s` predicts the raw Fed-day return.
-Both a and b train normally. The default transfer comparison adapts all encoder weights,
-using encoder lr = head lr / 10. Frozen and top-block transfer remain available.
+Both a and b train normally. Transfer modes: `full` adapts all encoder weights from the
+first step (encoder lr = head lr / 10); `staged` first trains the response heads with the
+encoder frozen, then unfreezes it at encoder lr = head lr / 10 from the best stage-1 weights
+(early stopping per stage, best weights across both stages win); `frozen` and `top` remain.
+`full` let freshly initialized heads update the pretrained encoder from the first step, and
+the first trial stopped after 1-8 epochs; `staged` is the fix.
 The scratch comparator receives the same ordinary-day history scaler and architecture,
 but random encoder weights. All comparison arms therefore share history normalization;
 the three-way runner rejects checkpoints with different history scalers. A standalone
@@ -84,31 +104,42 @@ or saving a run.
 .venv\Scripts\python -m fedenc.workflow audit --cutoff 2000-10-03
 ```
 
+**Per-fold pretraining.** The first trial pretrained once, with the first fold's cutoff
+(2000-10-03), so every fold's encoder saw only 1994-1999 even when testing in 2007-2009.
+Now each walk-forward fold gets its own checkpoint, pretrained on every ordinary day before
+that fold's first inner validation meeting. `folds` prints the cutoffs (loads the panel,
+fits nothing); for the development period they are 2000-10-03, 2002-06-26, 2004-01-28 and
+2005-11-01. `evaluate` takes all checkpoints of a set; each fit uses the latest one that
+precedes its inner validation block, and the comparison run saves a `checkpoint-by-fold`
+table. `--baselines pooled ridge_interact` fits the tabular baselines on the same folds;
+the comparison then reports every arm against both scratch and pooled.
+
+```powershell
+.venv\Scripts\python -m fedenc.workflow folds --through 2009-03-18
+```
+
 The following are **training commands**, provided for later authorized execution:
 
 ```powershell
-# Candidate objective: one stage, followed by Fed adaptation.
-.venv\Scripts\python -m fedenc.workflow pretrain --cutoff 2000-10-03 --device cpu
+# One checkpoint per fold, for the candidate and for the comparator.
+.venv\Scripts\python -m fedenc.workflow pretrain-folds --through 2009-03-18 --objective next_return_scaled --device cuda
+.venv\Scripts\python -m fedenc.workflow pretrain-folds --through 2009-03-18 --objective masked_reconstruction --device cuda
 
-# Comparator on the same dated histories, not another stage in the candidate.
-.venv\Scripts\python -m fedenc.workflow pretrain --cutoff 2000-10-03 --objective masked_reconstruction --device cpu
-
-# Replace MOMENT_RUN and MASKED_RUN with the saved run directories printed above.
-.venv\Scripts\python -m fedenc.workflow evaluate --checkpoint MOMENT_RUN --masked-checkpoint MASKED_RUN --through 2009-03-18 --min-train 60 --test-size 16 --arms tx_scratch tx_pre_full tx_masked_full --seeds 0 1 2 --device cpu
+# Pass every printed run directory of each set.
+.venv\Scripts\python -m fedenc.workflow evaluate --checkpoint RUN0 RUN1 RUN2 RUN3 --masked-checkpoint M0 M1 M2 M3 --through 2009-03-18 --min-train 60 --test-size 16 --arms tx_scratch tx_pre_full tx_pre_staged tx_pre_frozen tx_masked_staged --baselines pooled ridge_interact --seeds 0 1 2 --device cuda
 ```
 
-For the currently cached meetings, 60 initial training meetings place the first inner
-validation meeting at 2000-10-03, and the first scored meeting at 2001-11-06.
-The first 120 meetings end on 2009-03-18. These commands keep selection inside that
-development period. Guards calculate the actual fold boundaries instead of trusting
-these example dates. A checkpoint through 2009 would be rejected for this comparison.
+`vast_train.sh` (repo root, untracked) runs this pipeline on a rented GPU. A single
+`pretrain --cutoff` checkpoint still works with `evaluate`. The first 120 meetings end on
+2009-03-18; these commands keep selection inside that development period. Guards compute
+the fold boundaries instead of trusting the example dates.
 
 For a later **fixed-specification** outer evaluation with 120 initial meetings, the first
 inner validation meeting is 2007-01-31 and the first outer test is 2009-04-29 in the current
 cache. Either reuse the earlier checkpoint or build a new pretraining checkpoint with an
 appropriate cutoff. The originally suggested 2009-04-29 checkpoint is too late for the
-trainer's existing inner validation. Any later refreshed checkpoints require their own
-recorded specifications; the workflow does not automatically pretrain per fold.
+trainer's existing inner validation. `pretrain-folds` with the matching `--through`,
+`--min-train` and `--test-size` builds the per-fold set for it.
 
 No architecture or pretraining objective is selected using 2009–2025 outer test results,
 the 2026 holdout, reversal outcomes or trading profits. Mean per-meeting Fed-return MSE is
@@ -154,5 +185,6 @@ implementation replaced positional information with the mask token too; that is 
 Unit tests cover label timing, missing targets, FOMC exclusions, calendar splits,
 training-only scaling, equal date weights across batches, Gaussian-score gradients,
 checkpoint integrity, normalization transfer, checkpoint availability, frozen layers,
-and absence of implicit training. Tiny synthetic smoke fits never save trained runs.
+absence of implicit training, per-fold checkpoint choice, fold cutoffs, the naive-variance
+split, and staged adaptation (stage 1 leaves the encoder untouched, stage 2 unfreezes it). Tiny synthetic smoke fits never save trained runs.
 Real training and benchmarks have not been launched for this implementation.

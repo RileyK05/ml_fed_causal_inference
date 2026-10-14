@@ -61,6 +61,23 @@ class EncoderCheckpoint:
             )
 
 
+def pick_checkpoint(checkpoints, before=None) -> EncoderCheckpoint:
+    """The latest checkpoint available strictly before ``before`` (latest overall if None).
+
+    One checkpoint per walk-forward fold lets each fold pretrain on every ordinary day
+    before its own inner validation block instead of the first fold's.
+    """
+    ordered = sorted(checkpoints, key=lambda cp: cp.available_through)
+    if not ordered:
+        raise ValueError("no checkpoints given")
+    if before is None:
+        return ordered[-1]
+    usable = [cp for cp in ordered if cp.available_through < pd.Timestamp(before)]
+    if not usable:
+        ordered[0].require_before(before)  # raises the standard "must precede" error
+    return usable[-1]
+
+
 def save_checkpoint(result, store, *, datasets=(), role="exploratory", name=None):
     """Append one Q3 pretraining run; save no temporary prediction head."""
     state = result.state_dict

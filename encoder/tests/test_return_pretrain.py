@@ -302,3 +302,166 @@ def test_three_way_runner_saves_traceable_artifacts_without_optimizer_steps(chec
     assert runs["tx_pre_full"].manifest["params"]["objective"] == OBJECTIVES[0]
     assert len(runs["tx_pre_full"].table("response-state")) > 0
     assert len(runs["tx_pre_full"].table("response-scalers")) == 6
+
+
+# ---------------------------------------------------------------- per-fold checkpoints,
+# mean/variance split and staged adaptation. Fabricated weights and smoke fits only.
+
+def _checkpoint_at(tmp_path, through, name, objective=OBJECTIVES[0]):
+    result = fake_result()
+    end = pd.Timestamp(through)
+    result.params.update(objective=objective, available_through=str(end.date()),
+                         cutoff=str((end + pd.Timedelta(days=1)).date()),
+                         train_target_end=str((end - pd.Timedelta(days=30)).date()),
+                         val_target_end=str(end.date()))
+    return load_checkpoint(save_checkpoint(result, ResultStore(tmp_path / name)).path)
+
+
+def test_pick_checkpoint_uses_latest_available_before_each_fold(tmp_path):
+    from fedenc.checkpoint import pick_checkpoint
+
+    early = _checkpoint_at(tmp_path, "1990-12-31", "early")
+    late = _checkpoint_at(tmp_path, "1999-01-31", "late")
+    assert pick_checkpoint([late, early], "1999-02-01") is late
+    assert pick_checkpoint([late, early], "1999-01-31") is early
+    assert pick_checkpoint([early, late]) is late
+    with pytest.raises(ValueError, match="must precede"):
+        pick_checkpoint([early, late], "1990-12-31")
+
+
+def test_checkpoint_list_fits_with_latest_qualifying_checkpoint(tmp_path):
+    panel = make_synthetic_panel(n_firms=4, n_meetings=6, seed=0)
+    # Inner validation is the last meeting, 1999-07-21.
+    early = _checkpoint_at(tmp_path, "1990-12-31", "early")
+    usable = _checkpoint_at(tmp_path, "1999-06-30", "usable")
+    too_late = _checkpoint_at(tmp_path, "1999-07-21", "late")
+    arm = TxArm(init="pretrained", adapt="full", checkpoint=[early, too_late, usable],
+                max_epochs=1, patience=1, device="cpu")
+    arm.fit(panel)
+    assert arm.loaded_checkpoint is usable
+
+
+def test_staged_stage_one_trains_heads_and_leaves_encoder_untouched(checkpoint):
+    from fedcore.q3 import ResponseModel
+    from fedenc.train import fit_transferred
+
+    panel = make_synthetic_panel(n_firms=4, n_meetings=6, seed=0)
+    model = ResponseModel(checkpoint.encoder(), n_fund=panel.fundamentals.shape[1], n_ctx=panel.context.shape[1])
+    head_before = {k: v.clone() for k, v in model.head.state_dict().items()}
+    # Stage 2 at encoder_lr=0 cannot move the encoder either, so any change came from stage 1.
+    result = fit_transferred(model, panel, checkpoint.scaler, warmup_epochs=1, max_epochs=1,
+                             patience=1, encoder_lr=0.0)
+    assert result.stage_epochs == [1, 1]
+    assert len(result.val_loss) == 2
+    for key, tensor in checkpoint.state_dict.items():
+        assert torch.equal(model.encoder.state_dict()[key].cpu(), tensor)
+    assert any(not torch.equal(head_before[k], v) for k, v in model.head.state_dict().items())
+    assert all(p.requires_grad for p in model.encoder.parameters())  # stage 2 unfroze it
+
+
+def test_staged_arm_runs_both_stages_and_needs_pretrained_weights(checkpoint):
+    panel = make_synthetic_panel(n_firms=4, n_meetings=6, seed=0)
+    arm = TxArm(init="pretrained", adapt="staged", checkpoint=checkpoint, max_epochs=1, patience=1, device="cpu")
+    arm.fit(panel)
+    assert arm.fit_result.stage_epochs == [1, 1]
+    with pytest.raises(ValueError, match="pretrained"):
+        TxArm(init="scratch", adapt="staged")
+
+
+def test_naive_variance_and_zero_mean_split():
+    import math
+
+    from fedenc.pretrain_return import diagnose, naive_variance
+
+    corpus = tiny_corpus()
+    rows = np.arange(len(corpus))
+    history, mask, _ = corpus.batch(rows)
+    expected = np.mean(history[:, -63:, 0].astype(np.float64) ** 2, axis=1)
+    np.testing.assert_allclose(naive_variance(history, mask), np.maximum(expected, 0.01), rtol=1e-5)
+
+    class Encoder(torch.nn.Module):
+        def forward(self, x, mask):
+            return torch.ones(len(x), 1)
+
+    class Head(torch.nn.Module):
+        def forward(self, h):
+            return torch.zeros(len(h)), torch.ones(len(h))
+
+    parts = diagnose(Encoder(), Head(), corpus, date_groups(corpus, rows),
+                     {"hist_median": np.zeros(5), "hist_iqr": np.ones(5)}, batch_size=4, device="cpu")
+    assert parts["nll_mean_only"] == pytest.approx(parts["nll_naive"])  # a zero mean adds nothing
+    assert parts["r2"] == pytest.approx(0.0)
+    assert parts["xs_r2"] == pytest.approx(0.0)
+    assert math.isnan(parts["xs_corr"])  # two firms per date is too few
+
+
+@pytest.mark.parametrize("objective", [OBJECTIVES[0], OBJECTIVES[2]])
+def test_return_objectives_log_the_mean_variance_split(objective):
+    torch.manual_seed(0)
+    encoder = PatchTransformerEncoder(d_model=8, n_layers=1, n_heads=2, dim_feedforward=16, dropout=0)
+    result = pretrain_return(encoder, tiny_corpus(), objective=objective, epochs=1, batch_size=8,
+                             dates_per_step=4, scaler_windows=16, purge_history=False, device="cpu")
+    split = {"val_nll_naive", "val_nll_mean_only", "val_r2", "val_xs_r2", "val_xs_corr"}
+    assert split <= set(result.curves.columns)
+    assert np.isfinite(result.curves[["val_nll_naive", "val_nll_mean_only", "val_r2"]]).all().all()
+
+
+def test_fold_cutoffs_are_each_folds_first_inner_validation_meeting():
+    import fedenc.workflow as workflow
+    from fedcore.protocol import walk_forward
+    from fedcore.q3.train import validation_meetings
+
+    panel = make_synthetic_panel(n_firms=3, n_meetings=12, seed=0)
+    table = workflow.fold_cutoffs(panel, 6, 2)
+    folds = walk_forward(panel.meetings(), 6, 2)
+    assert len(table) == len(folds) > 1
+    for row, fold in zip(table.itertuples(), folds):
+        part = panel.subset(np.flatnonzero(np.isin(panel.meeting, fold.train)))
+        assert row.cutoff == validation_meetings(part, 0.15).min()
+        assert row.cutoff < row.first_test
+    assert table.cutoff.is_monotonic_increasing
+
+
+def test_per_fold_runner_records_which_checkpoint_each_fold_used(tmp_path, monkeypatch):
+    import fedcore.q3.real as real
+    import fedenc.workflow as workflow
+    from fedcore.q3 import ResponseModel
+    from fedcore.q3.evaluate import EvalResult
+    from fedcore.q3.train import ChannelScaler
+
+    # 8 meetings, min_train 4, test 2: fold cutoffs 1999-04-28 and 1999-07-21.
+    dates = ["1999-03-31", "1999-06-30"]
+    nxt = [_checkpoint_at(tmp_path, d, f"n{i}") for i, d in enumerate(dates)]
+    msk = [_checkpoint_at(tmp_path, d, f"m{i}", OBJECTIVES[1]) for i, d in enumerate(dates)]
+    panel = make_synthetic_panel(n_firms=3, n_meetings=8, seed=0)
+    monkeypatch.setattr(real, "load_real_panel", lambda: (panel, None, {}))
+
+    def fake_walk_forward(panel, factory, **kwargs):
+        arm = factory(0)
+        arm.model = ResponseModel(arm._encoder(), n_fund=3, n_ctx=4)
+        arm.scaler = ChannelScaler.fit(panel)
+        return EvalResult(pd.DataFrame({"meeting": [panel.meeting[-1]]}),
+                          {"mse_per_meeting": 1.0}, pd.DataFrame({"seed": [0]}),
+                          pd.DataFrame({"fold": [0], "seed": [0]}),
+                          pd.DataFrame({"epoch": [1], "train_loss": [1.0], "val_loss": [1.0]}))
+
+    monkeypatch.setattr(workflow, "run_walk_forward", fake_walk_forward)
+    monkeypatch.setattr(workflow, "compare", lambda *args: {"estimate": 0.0, "n_meetings": 1})
+
+    class FakeDataStore(ResultStore):
+        def save(self, *args, **kwargs):
+            kwargs["datasets"] = []
+            return super().save(*args, **kwargs)
+
+    store = FakeDataStore(tmp_path / "eval")
+    summary = workflow.evaluate_checkpoint(
+        [c.path for c in nxt], masked_checkpoint=[c.path for c in msk], through="2009-03-18",
+        min_train=4, test_size=2, seeds=(0,), arms=("tx_scratch", "tx_pre_staged", "tx_masked_staged"),
+        store=store,
+    )
+    assert summary.arm.tolist() == ["tx_scratch", "tx_pre_staged", "tx_masked_staged"]
+    runs = {run.manifest["name"]: run for run in store.runs("Q3")}
+    used = runs["encoder-transfer-comparison"].table("checkpoint-by-fold")
+    assert used.checkpoint.tolist() == [str(c.path) for c in nxt]
+    assert used.masked_checkpoint.tolist() == [str(c.path) for c in msk]
+    assert len(runs["tx_pre_staged"].manifest["params"]["checkpoint_runs"]) == 2
