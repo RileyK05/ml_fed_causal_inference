@@ -265,9 +265,9 @@ def test_pretrained_top_freezes_the_lower_stack():
     )
     arm.fit(panel, seed=0)
     enc = arm.model.encoder
-    assert torch.equal(enc.proj.weight, state["proj.weight"])
-    assert torch.equal(enc.pos, state["pos"])
-    assert torch.equal(enc.blocks.layers[0].linear1.weight, state["blocks.layers.0.linear1.weight"])
+    assert torch.equal(enc.proj.weight.cpu(), state["proj.weight"])  # the arm may train on a GPU
+    assert torch.equal(enc.pos.cpu(), state["pos"])
+    assert torch.equal(enc.blocks.layers[0].linear1.weight.cpu(), state["blocks.layers.0.linear1.weight"])
     assert not enc.proj.weight.requires_grad
     assert not enc.blocks.layers[0].linear1.weight.requires_grad
     assert enc.blocks.layers[-1].linear1.weight.requires_grad
