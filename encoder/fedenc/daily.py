@@ -274,7 +274,8 @@ def run(through="2009-03-18", every=10, seeds=(0,), min_train=60, test_size=16, 
     return summary
 
 
-def _compare_and_save(panel, makers, *, prefix, params, min_train, test_size, seeds, store, datasets=None):
+def _compare_and_save(panel, makers, *, prefix, params, min_train, test_size, seeds, store, datasets=None,
+                      role="exploratory"):
     """Fit each maker on the same folds; save runs; summary row per arm vs scratch."""
     from fedcore.q3.evaluate import compare, run_walk_forward
     from fedcore.q3.real import INPUTS
@@ -287,7 +288,7 @@ def _compare_and_save(panel, makers, *, prefix, params, min_train, test_size, se
     for name, make in makers.items():
         result = run_walk_forward(panel, make, min_train=min_train, test_size=test_size, seeds=tuple(seeds))
         grade = b_grade(result.predictions, shock)
-        saved = store.save(specs()["Q3"], f"{prefix}-{name}", role="exploratory", datasets=datasets,
+        saved = store.save(specs()["Q3"], f"{prefix}-{name}", role=role, datasets=datasets,
                            params=dict(arm=name, seeds=list(seeds), min_train=min_train,
                                        test_size=test_size, **params),
                            metrics={**result.metrics, **grade},
@@ -301,7 +302,7 @@ def _compare_and_save(panel, makers, *, prefix, params, min_train, test_size, se
             diff = compare(results[row["arm"]], results["tx_scratch"])
             row.update(mse_vs_scratch=diff["estimate"], ci_low=diff.get("ci_low"), ci_high=diff.get("ci_high"))
     summary = pd.DataFrame(rows)
-    store.save(specs()["Q3"], f"{prefix}-comparison", role="exploratory", params=params,
+    store.save(specs()["Q3"], f"{prefix}-comparison", role=role, params=params,
                tables={"comparison": summary})
     return summary
 

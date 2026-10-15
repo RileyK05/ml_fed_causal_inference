@@ -20,6 +20,7 @@ chunks always hold whole meetings, which both changes need.
 
     python -m fedenc.decouple run --seeds 0 1 2 --device cuda      (training: needs the go-ahead)
     python -m fedenc.decouple confirm --seeds 3 4 5 --device cuda  (training: needs the go-ahead)
+    python -m fedenc.decouple final --device cuda                  (the one 2022-2025 test; run once)
 """
 from __future__ import annotations
 
@@ -360,6 +361,53 @@ def confirm(through="2009-03-18", seeds=(3, 4, 5), members=3, min_train=60, test
     return summary, tables
 
 
+DEV_END = pd.Timestamp("2021-12-31")    # development period (decided 2026-10-15)
+FINAL_END = pd.Timestamp("2025-12-31")  # final test: 2022-2025 meetings, used once
+
+
+def final(seeds=(6, 7, 8), members=3, device=None, store=None):
+    """The one confirmatory test of the locked Q3 model. Training; run once.
+
+    Locked spec: TwoPartArm (pooled meeting-wide move + the average firm differences of
+    ``members`` centered-a networks, cross-firm loss), S&P 500 universe, raw returns, the six
+    original fundamentals. One fold: fit on every meeting through ``DEV_END``, score the
+    2022-2025 meetings against pooled refit on the same data. Saved as role ``primary``.
+    """
+    from fedcore.protocol import walk_forward
+    from fedcore.q3.baselines import BASELINES
+    from fedcore.q3.real import UNIVERSES
+    from fedcore.results import ResultStore
+    from fedenc import diagnostics
+    from fedenc.config import RESULTS
+    from fedenc.daily import _compare_and_save
+    from fedenc.workflow import bounded_panel
+
+    panel, through = bounded_panel(FINAL_END)
+    meetings = panel.meetings()
+    n_dev = int((meetings <= DEV_END).sum())
+    folds = walk_forward(meetings, n_dev, len(meetings) - n_dev)
+    if len(folds) != 1 or folds[0].test.min() <= DEV_END or folds[0].train.max() > DEV_END:
+        raise RuntimeError("the final test must be one fold: train through 2021, test 2022-2025")
+    print(f"final test: train {len(folds[0].train)} meetings to {folds[0].train.max().date()}, "
+          f"test {len(folds[0].test)} meetings {folds[0].test.min().date()} to {folds[0].test.max().date()}",
+          flush=True)
+    store = store or ResultStore(RESULTS)
+    makers = {"two_part": lambda seed: TwoPartArm(seed, members=members, device=device),
+              "pooled": BASELINES["pooled"]}
+    summary = _compare_and_save(panel, makers, prefix="q3-final", role="primary",
+                                params=dict(through=str(through.date()), dev_end=str(DEV_END.date()),
+                                            lambda_mean=LAMBDA_CROSS_FIRM, members=members, universe="sp500",
+                                            target="raw", locked_spec="two_part"),
+                                min_train=n_dev, test_size=len(meetings) - n_dev, seeds=seeds, store=store,
+                                datasets=UNIVERSES["sp500"].inputs)
+    runs = {arm: Path(path) for arm, path in zip(summary["arm"], summary["path"])}
+    tables = diagnostics.run(runs, ("pooled",), store=store, panel=panel, label="q3-final-diagnostics")
+    with pd.option_context("display.width", 250, "display.max_columns", 40, "display.float_format", "{:.3f}".format):
+        for name, table in tables.items():
+            print(f"\n== {name}\n{table.to_string(index=False)}", flush=True)
+    return summary, tables
+
+
 def main(argv=None):
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = p.add_subparsers(dest="command", required=True)
@@ -375,8 +423,14 @@ def main(argv=None):
             q.add_argument("--target", default="raw", choices=("raw", "market_adjusted"))
             q.add_argument("--test-size", type=int, default=16, help="meetings per test window")
             q.add_argument("--no-scratch", action="store_true", help="skip the plain transformer arm")
+    q = sub.add_parser("final", help="the one confirmatory test on 2022-2025 (run once)")
+    q.add_argument("--seeds", type=int, nargs="+", default=[6, 7, 8])
+    q.add_argument("--members", type=int, default=3)
+    q.add_argument("--device")
     args = p.parse_args(argv)
-    if args.command == "run":
+    if args.command == "final":
+        final(seeds=tuple(args.seeds), members=args.members, device=args.device)
+    elif args.command == "run":
         run(args.through, seeds=tuple(args.seeds), device=args.device)
     else:
         confirm(args.through, seeds=tuple(args.seeds), members=args.members, device=args.device,
