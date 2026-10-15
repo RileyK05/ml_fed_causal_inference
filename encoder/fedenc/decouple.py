@@ -197,16 +197,30 @@ def predict(model, panel, scaler):
     return tuple(out)
 
 
+def fund_view(panel, fund_cols):
+    """``panel`` with only its first ``fund_cols`` fundamentals columns (None: all of them)."""
+    import dataclasses
+
+    if fund_cols is None or fund_cols >= panel.fundamentals.shape[1]:
+        return panel
+    return dataclasses.replace(panel, fundamentals=panel.fundamentals[:, :fund_cols],
+                               fundamentals_mask=panel.fundamentals_mask[:, :fund_cols])
+
+
 class DecoupleArm:
     """``centered_a``: StructModel instead of ResponseModel. ``lambda_mean``: loss weight on the
-    meeting-average part (1 = ordinary per-meeting MSE)."""
+    meeting-average part (1 = ordinary per-meeting MSE). ``fund_cols``: use only the first
+    ``fund_cols`` fundamentals (so arms with and without the sector columns share one panel)."""
 
-    def __init__(self, seed=0, *, centered_a=False, lambda_mean=1.0, device=None, max_epochs=40, patience=10):
+    def __init__(self, seed=0, *, centered_a=False, lambda_mean=1.0, device=None, max_epochs=40, patience=10,
+                 fund_cols=None):
         self.seed, self.centered_a, self.lambda_mean = int(seed), bool(centered_a), float(lambda_mean)
         self.device, self.max_epochs, self.patience = device, max_epochs, patience
+        self.fund_cols = fund_cols
         self.model = self.scaler = self.fit_result = None
 
     def fit(self, panel, seed=None, **_):
+        panel = fund_view(panel, self.fund_cols)
         seed = self.seed if seed is None else int(seed)
         seed_everything(seed)
         make = StructModel if self.centered_a else ResponseModel
@@ -220,7 +234,7 @@ class DecoupleArm:
     def predict(self, panel):
         if self.model is None:
             raise RuntimeError("fit the arm before predict")
-        return predict(self.model, panel, self.scaler)
+        return predict(self.model, fund_view(panel, self.fund_cols), self.scaler)
 
 
 class TwoPartArm:
@@ -232,10 +246,10 @@ class TwoPartArm:
     mean (the 2008 crisis), which this drops."""
 
     def __init__(self, seed=0, *, members=3, centered_a=True, lambda_mean=LAMBDA_CROSS_FIRM, device=None,
-                 max_epochs=40, patience=10):
+                 max_epochs=40, patience=10, fund_cols=None):
         self.seed, self.members = int(seed), int(members)
         self.net_kwargs = dict(centered_a=centered_a, lambda_mean=lambda_mean, device=device,
-                               max_epochs=max_epochs, patience=patience)
+                               max_epochs=max_epochs, patience=patience, fund_cols=fund_cols)
         self.pooled = self.nets = self.fit_result = None
 
     def fit(self, panel, seed=None, **_):
@@ -299,32 +313,38 @@ def run(through="2009-03-18", seeds=(0, 1, 2), min_train=60, test_size=16, devic
 
 
 def confirm(through="2009-03-18", seeds=(3, 4, 5), members=3, min_train=60, test_size=16, device=None,
-            store=None, universe="sp500", sector=False):
+            store=None, universe="sp500", sector=False, target="raw", scratch=True):
     """Re-test the two-part model on fresh seeds, with the plain transformer refit alongside. Training.
 
     With a broader ``universe`` the arms train on every row; diagnostics run on all rows and
     again on the S&P 500 rows only, which compare with the S&P-only panel's scores. ``sector``
-    adds GICS sector one-hot columns to the fundamentals branch."""
+    adds a ``two_part_sector`` arm that also sees GICS sector one-hot columns (``two_part`` keeps
+    the original fundamentals). ``target="market_adjusted"`` fits every arm, pooled included, to
+    the abnormal return (see ``workflow.market_adjusted``). ``scratch=False`` skips the plain
+    transformer."""
     from fedcore.q3.baselines import BASELINES
-    from fedcore.q3.real import UNIVERSES
+    from fedcore.q3.real import FUNDAMENTAL_NAMES, UNIVERSES
     from fedcore.results import ResultStore
     from fedenc import diagnostics
     from fedenc.config import RESULTS
     from fedenc.daily import _compare_and_save
     from fedenc.workflow import bounded_panel
 
-    panel, through, rows = bounded_panel(through, universe=universe, with_rows=True, sector=sector)
+    panel, through, rows = bounded_panel(through, universe=universe, with_rows=True, sector=sector, target=target)
     store = store or ResultStore(RESULTS)
-    makers = {
-        "tx_scratch": lambda seed: DecoupleArm(seed, device=device),
-        "two_part": lambda seed: TwoPartArm(seed, members=members, device=device),
-        "pooled": BASELINES["pooled"],
-    }
+    base_cols = len(FUNDAMENTAL_NAMES)
+    makers = {"tx_scratch": lambda seed: DecoupleArm(seed, device=device, fund_cols=base_cols)} if scratch else {}
+    makers["two_part"] = lambda seed: TwoPartArm(seed, members=members, device=device, fund_cols=base_cols)
+    if sector:
+        makers["two_part_sector"] = lambda seed: TwoPartArm(seed, members=members, device=device)
+    makers["pooled"] = BASELINES["pooled"]
     prefix = "twopart-confirm" if universe == "sp500" else f"twopart-{universe}"
-    prefix += "-sector" if sector else ""
+    if pd.Timestamp(through) != pd.Timestamp("2009-03-18"):
+        prefix += f"-to{through.year}"
+    prefix += "-adj" if target == "market_adjusted" else ""
     summary = _compare_and_save(panel, makers, prefix=prefix,
                                 params=dict(through=str(through.date()), lambda_mean=LAMBDA_CROSS_FIRM,
-                                            members=members, universe=universe, sector=sector),
+                                            members=members, universe=universe, sector=sector, target=target),
                                 min_train=min_train, test_size=test_size, seeds=seeds, store=store,
                                 datasets=UNIVERSES[universe].inputs)
     runs = {arm.removeprefix("tx_"): Path(path) for arm, path in zip(summary["arm"], summary["path"])}
@@ -351,13 +371,17 @@ def main(argv=None):
         if name == "confirm":
             q.add_argument("--members", type=int, default=3)
             q.add_argument("--universe", default="sp500")
-            q.add_argument("--sector", action="store_true", help="add GICS sector to the fundamentals")
+            q.add_argument("--sector", action="store_true", help="also fit a two-part arm that sees GICS sector")
+            q.add_argument("--target", default="raw", choices=("raw", "market_adjusted"))
+            q.add_argument("--test-size", type=int, default=16, help="meetings per test window")
+            q.add_argument("--no-scratch", action="store_true", help="skip the plain transformer arm")
     args = p.parse_args(argv)
     if args.command == "run":
         run(args.through, seeds=tuple(args.seeds), device=args.device)
     else:
         confirm(args.through, seeds=tuple(args.seeds), members=args.members, device=args.device,
-                universe=args.universe, sector=args.sector)
+                universe=args.universe, sector=args.sector, target=args.target, test_size=args.test_size,
+                scratch=not args.no_scratch)
 
 
 if __name__ == "__main__":

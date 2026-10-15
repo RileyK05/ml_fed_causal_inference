@@ -72,13 +72,49 @@ def with_sector(panel, rows):
     return out
 
 
-def bounded_panel(through, universe="sp500", with_rows=False, sector=False):
+def market_adjusted(panel, market=None):
+    """Replace the target with the event-study abnormal return: return - beta x market return that day.
+
+    Beta is the firm's last observed 63-day beta before the meeting (1.0 when it has none), so it is
+    known in advance; the market return (Fama-French ``mktrf + rf``, percent) is the meeting day's.
+    High beta alone then earns nothing: a and b must explain what is left after beta x market.
+    """
+    import dataclasses
+
+    from fedcore.q3.contracts import BETA63
+    from fedcore.q3.real import BETA_FALLBACK
+
+    if market is None:
+        from fedcore.data import load
+
+        ff = load("ff_factors_daily", columns=["mktrf", "rf"])
+        market = pd.Series(100.0 * (ff["mktrf"] + ff["rf"]).to_numpy(dtype=np.float64),
+                           index=pd.to_datetime(ff["date"]))
+    day = market.reindex(pd.DatetimeIndex(panel.meeting)).to_numpy(dtype=np.float64)
+    if np.isnan(day).any():
+        raise ValueError("some meetings have no market return")
+    b = panel.history[:, :, BETA63].astype(np.float64)
+    ok = np.isfinite(b)
+    last = b.shape[1] - 1 - np.argmax(ok[:, ::-1], axis=1)
+    beta = np.where(ok.any(axis=1), b[np.arange(len(b)), last], BETA_FALLBACK)
+    out = dataclasses.replace(panel, target=(panel.target - beta * day).astype(np.float32))
+    out.validate()
+    return out
+
+
+TARGETS = ("raw", "market_adjusted")
+
+
+def bounded_panel(through, universe="sp500", with_rows=False, sector=False, target="raw"):
     """The real panel through an inclusive historical date; never the 2026 holdout.
 
     ``with_rows`` also returns the matching row metadata (meeting, permno, in_sp500, ...).
-    ``sector`` appends GICS sector one-hot columns to the fundamentals (see ``with_sector``)."""
+    ``sector`` appends GICS sector one-hot columns to the fundamentals (see ``with_sector``).
+    ``target="market_adjusted"`` swaps in the abnormal return (see ``market_adjusted``)."""
     from fedcore.q3.real import load_real_panel
 
+    if target not in TARGETS:
+        raise ValueError(f"target must be one of {TARGETS}")
     through = pd.Timestamp(through)
     if pd.isna(through) or through >= pd.Timestamp("2026-01-01"):
         raise ValueError("through must be a historical date before the separate 2026 holdout")
@@ -86,9 +122,12 @@ def bounded_panel(through, universe="sp500", with_rows=False, sector=False):
     if sector:
         panel = with_sector(panel, rows)
     keep = np.flatnonzero(panel.meeting <= through.to_datetime64())
+    panel = panel.subset(keep)
+    if target == "market_adjusted":
+        panel = market_adjusted(panel)
     if with_rows:
-        return panel.subset(keep), through, rows.iloc[keep].reset_index(drop=True)
-    return panel.subset(keep), through
+        return panel, through, rows.iloc[keep].reset_index(drop=True)
+    return panel, through
 
 
 def fold_cutoffs(panel, min_train, test_size, val_frac=VAL_FRAC):

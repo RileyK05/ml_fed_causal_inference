@@ -205,6 +205,18 @@ CREDIT = (
             ),
         ),
     ),
+    Dataset(
+        "comp_fundq_funding",
+        "Quarterly debt flows (year-to-date reduction and issuance) and net PP&E (collateral).",
+        (
+            Source(
+                "comp", "fundq",
+                ("gvkey", "datadate", "rdq", "fyearq", "fqtr", "dltry", "dltisy", "ppentq"),
+                "indfmt = 'INDL' AND datafmt = 'STD' AND popsrc = 'D' AND consol = 'C' "
+                "AND datadate >= '{start}' AND gvkey IN (SELECT gvkey FROM {link})",
+            ),
+        ),
+    ),
 )
 _BY_NAME = {ds.name: ds for ds in DATASETS}
 UNIVERSES = {

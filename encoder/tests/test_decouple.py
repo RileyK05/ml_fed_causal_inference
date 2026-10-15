@@ -106,6 +106,46 @@ def test_sector_columns_are_one_hot_and_pass_the_scaler_unchanged(panel):
     np.testing.assert_array_equal(scaled, np.nan_to_num(onehot) * mask)
 
 
+def test_market_adjusted_target_removes_beta_times_market(panel):
+    import pandas as pd
+    from fedcore.q3.contracts import BETA63
+    from fedenc.workflow import market_adjusted
+
+    days = pd.DatetimeIndex(np.unique(panel.meeting))
+    market = pd.Series(np.linspace(-2.0, 2.0, days.size), index=days)
+    hist = panel.history.copy()
+    hist[0, -1, BETA63] = np.nan  # prior day unobserved: use the last observed beta
+    hist[1, :, BETA63] = np.nan   # never observed: beta falls back to 1
+    hist[0, -2, BETA63] = 1.7
+    mask = panel.history_mask.copy()
+    mask[0, -1] = False
+    mask[1, :] = False
+    hist[0, -1] = np.nan
+    hist[1] = np.nan
+    import dataclasses
+    p = dataclasses.replace(panel, history=hist, history_mask=mask)
+    out = market_adjusted(p, market)
+    m = market.reindex(pd.DatetimeIndex(p.meeting)).to_numpy()
+    assert out.target[0] == pytest.approx(p.target[0] - 1.7 * m[0], abs=1e-5)
+    assert out.target[1] == pytest.approx(p.target[1] - 1.0 * m[1], abs=1e-5)
+    k = 5
+    assert out.target[k] == pytest.approx(p.target[k] - p.history[k, -1, BETA63] * m[k], abs=1e-4)
+    with pytest.raises(ValueError):
+        market_adjusted(p, market.iloc[1:])
+
+
+def test_fund_view_keeps_the_first_columns(panel, monkeypatch):
+    k = panel.fundamentals.shape[1]
+    view = dc.fund_view(panel, 2)
+    assert view.fundamentals.shape[1] == 2 and view.fundamentals_mask.shape[1] == 2
+    assert dc.fund_view(panel, None) is panel and dc.fund_view(panel, k + 3) is panel
+    monkeypatch.setattr(dc, "PatchTransformerEncoder", lambda: tiny_encoder())
+    arm = dc.TwoPartArm(0, members=1, device="cpu", max_epochs=1, patience=1, fund_cols=2)
+    arm.fit(panel)
+    assert arm.nets[0].model.fund.net[0].in_features == 4  # 2 columns + 2 observed flags
+    assert np.isfinite(arm.predict(panel)[0]).all()
+
+
 def test_reference_objective_is_the_shared_meeting_mse(panel):
     from fedcore.q3 import ResponseModel
     from fedcore.q3.train import _eval_loss

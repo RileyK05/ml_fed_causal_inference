@@ -327,6 +327,16 @@ datasets:
     questions: [Q3]
     description: Year-to-date operating cash flow and capex, quarterly interest expense, operating income and dividends; join on rdq.
 
+  comp_fundq_funding_top1500:
+    path: raw/wrds_top1500/comp_fundq_funding.parquet
+    layer: raw
+    source: Compustat North America via WRDS (comp.fundq)
+    grain: quarterly
+    date_column: datadate
+    key: [gvkey, datadate, fyearq, fqtr]
+    questions: [Q3]
+    description: Year-to-date long-term debt reduction (dltry) and issuance (dltisy), and net PP&E (ppentq); join on rdq.
+
   # ---- 2026 holdout extension (yfinance; CRSP's annual vintage ends 2025-12-31) ----
   wiki_sp500_constituents:
     path: raw/wikipedia/sp500_constituents.csv

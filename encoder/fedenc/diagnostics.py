@@ -28,7 +28,12 @@ from fedcore.q3.contracts import BETA63, RET, RVOL21
 from fedcore.q3.real import FUNDAMENTAL_NAMES
 
 LARGE_SHOCK = 0.25
-CRISIS_FOLD = 3  # 2007-10 to 2009-03
+CRISIS =(pd.Timestamp("2007-08-01"), pd.Timestamp("2009-06-30"))  # by date, so any window layout works
+
+
+def in_crisis(meetings) -> np.ndarray:
+    m = pd.DatetimeIndex(meetings)
+    return np.asarray((m >= CRISIS[0]) & (m <= CRISIS[1]))
 N_BOOT = 10_000
 
 
@@ -103,8 +108,8 @@ def mse_table(meetings: dict, references=("pooled", "scratch")) -> pd.DataFrame:
     rows = []
     for name, pm in meetings.items():
         row = {"model": name, **{c: pm[c].mean() for c in ("total", "mean_part", "cs", "cs_a_only", "cs_b_only")},
-               "total_win0_2": pm.loc[pm.fold != CRISIS_FOLD, "total"].mean(),
-               "total_win3": pm.loc[pm.fold == CRISIS_FOLD, "total"].mean()}
+               "total_non_crisis": pm.loc[~in_crisis(pm.index), "total"].mean(),
+               "total_crisis": pm.loc[in_crisis(pm.index), "total"].mean()}
         for ref in references:
             if ref in meetings and ref != name:
                 for part in ("total", "mean_part", "cs"):
@@ -139,7 +144,7 @@ def shock_table(meetings: dict, shock, reference="pooled") -> pd.DataFrame:
                 continue
             g = pm.loc[idx]
             row = {"model": name, "surprise": label, "meetings": len(idx),
-                   "crisis_meetings": int((g.fold == CRISIS_FOLD).sum()), "total": g["total"].mean(),
+                   "crisis_meetings": int(in_crisis(g.index).sum()), "total": g["total"].mean(),
                    "mean_part": g["mean_part"].mean(), "cs": g["cs"].mean(),
                    "share_of_error": g["total"].sum() / pm["total"].sum()}
             if reference in meetings and name != reference:
