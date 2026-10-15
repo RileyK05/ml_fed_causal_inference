@@ -101,3 +101,20 @@ def test_chunked_evaluation_matches_shared_meeting_mse():
                           n_fund=panel.fundamentals.shape[1], n_ctx=panel.context.shape[1])
     batch = _tensors(panel, ChannelScaler.fit(panel), torch.device("cpu"))
     assert daily._eval_chunked(model, batch, chunk=7) == pytest.approx(_eval_loss(model, batch, False), rel=1e-5)
+
+
+def test_no_history_arm_ignores_price_history_and_branch_width_is_set():
+    from fedenc.arms import TxArm
+
+    panel = make_synthetic_panel(n_firms=4, n_meetings=6, seed=0)
+    arm = TxArm(no_history=True, branch_dim=32, max_epochs=1, patience=1, device="cpu")
+    arm.fit(panel)
+    assert arm.model.fund.net[0].out_features == 32
+    assert arm.model.context_mlp.net[0].out_features == 32
+    mu, _, _ = arm.predict(panel)
+    scrambled = dataclasses.replace(panel, history=np.random.default_rng(0).normal(size=panel.history.shape)
+                                    .astype(panel.history.dtype))
+    np.testing.assert_allclose(arm.predict(scrambled)[0], mu)
+    assert np.isfinite(mu).all()
+    with pytest.raises(ValueError, match="opposite"):
+        TxArm(no_history=True, history_only=True)

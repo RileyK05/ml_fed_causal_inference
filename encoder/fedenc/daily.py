@@ -274,9 +274,64 @@ def run(through="2009-03-18", every=10, seeds=(0,), min_train=60, test_size=16, 
     return summary
 
 
+def _compare_and_save(panel, makers, *, prefix, params, min_train, test_size, seeds, store):
+    """Fit each maker on the same folds; save runs; summary row per arm vs scratch."""
+    from fedcore.q3.evaluate import compare, run_walk_forward
+    from fedcore.q3.real import INPUTS
+    from fedcore.questions import specs
+
+    shock = pd.Series(panel.shock, index=pd.DatetimeIndex(panel.meeting)).groupby(level=0).first()
+    results, rows = {}, []
+    for name, make in makers.items():
+        result = run_walk_forward(panel, make, min_train=min_train, test_size=test_size, seeds=tuple(seeds))
+        grade = b_grade(result.predictions, shock)
+        saved = store.save(specs()["Q3"], f"{prefix}-{name}", role="exploratory", datasets=list(INPUTS),
+                           params=dict(arm=name, seeds=list(seeds), min_train=min_train,
+                                       test_size=test_size, **params),
+                           metrics={**result.metrics, **grade},
+                           tables=dict(predictions=result.predictions, folds=result.folds, curves=result.curves))
+        results[name] = result
+        rows.append(dict(arm=name, run_id=saved.run_id, mse=result.metrics["mse_per_meeting"],
+                         rank_ic=result.metrics.get("rank_ic"), **grade))
+        print(pd.DataFrame([rows[-1]]).to_string(index=False), flush=True)
+    for row in rows:
+        if row["arm"] != "tx_scratch" and "tx_scratch" in results:
+            diff = compare(results[row["arm"]], results["tx_scratch"])
+            row.update(mse_vs_scratch=diff["estimate"], ci_low=diff.get("ci_low"), ci_high=diff.get("ci_high"))
+    summary = pd.DataFrame(rows)
+    store.save(specs()["Q3"], f"{prefix}-comparison", role="exploratory", params=params,
+               tables={"comparison": summary})
+    return summary
+
+
+def run_inputs(through="2009-03-18", seeds=(0, 1, 2), min_train=60, test_size=16, device=None, store=None):
+    """Does the model use fundamentals? Scratch vs wider branches vs no price history. Training."""
+    from fedcore.q3.baselines import BASELINES
+    from fedcore.results import ResultStore
+    from fedenc.arms import TxArm
+    from fedenc.config import RESULTS
+    from fedenc.workflow import bounded_panel
+
+    panel, through = bounded_panel(through)
+    budget = dict(device=device, max_epochs=40, patience=10)
+    makers = {
+        "tx_scratch": lambda seed: TxArm(seed=seed, **budget),
+        "tx_branch32": lambda seed: TxArm(seed=seed, branch_dim=32, **budget),
+        "tx_no_history": lambda seed: TxArm(seed=seed, no_history=True, **budget),
+        "pooled": BASELINES["pooled"],
+    }
+    return _compare_and_save(panel, makers, prefix="inputs-exp", params=dict(through=str(through.date())),
+                             min_train=min_train, test_size=test_size, seeds=seeds,
+                             store=store or ResultStore(RESULTS))
+
+
 def main(argv=None):
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = p.add_subparsers(dest="command", required=True)
+    q = sub.add_parser("inputs", help="scratch input/width variants vs scratch and pooled (training)")
+    q.add_argument("--through", default="2009-03-18")
+    q.add_argument("--seeds", type=int, nargs="+", default=[0, 1, 2])
+    q.add_argument("--device")
     for command in ("build", "run"):
         q = sub.add_parser(command)
         q.add_argument("--through", default="2009-03-18")
@@ -286,6 +341,9 @@ def main(argv=None):
             q.add_argument("--baselines", nargs="*", default=["pooled"])
             q.add_argument("--device")
     args = p.parse_args(argv)
+    if args.command == "inputs":
+        print(run_inputs(args.through, seeds=tuple(args.seeds), device=args.device).to_string(index=False))
+        return
     if args.command == "build":  # builds the ordinary-day panel and reports it; fits nothing
         panel, notes = build_daily_panel(args.through, every=args.every)
         print({k: notes[k] for k in ("n_rows", "n_meetings", "n_firms", "first_meeting", "last_meeting")})

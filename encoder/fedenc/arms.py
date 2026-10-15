@@ -10,6 +10,7 @@ that qualifies.
 """
 from __future__ import annotations
 
+import dataclasses
 from pathlib import Path
 
 import numpy as np
@@ -72,6 +73,9 @@ class TxArm:
     ``checkpoint``  one checkpoint, or a list (one per fold): each fit picks the latest
                     one available before its inner validation block
     ``history_only``  zero fundamentals and context at fit and predict (E4 ablation)
+    ``no_history``    blank the price history (all zeros, all observed) at fit and predict,
+                      so only fundamentals and context can separate firms
+    ``branch_dim``    width of the fundamentals and context branches (ResponseModel default 16)
     ``device``  None = CUDA when available, else CPU
     """
 
@@ -81,6 +85,8 @@ class TxArm:
         init: str = "scratch",
         adapt: str = "full",
         history_only: bool = False,
+        no_history: bool = False,
+        branch_dim: int | None = None,
         encoder_kwargs: dict | None = None,
         pretrain_kwargs: dict | None = None,
         checkpoint: str | Path | EncoderCheckpoint | None = None,
@@ -97,6 +103,10 @@ class TxArm:
         self.init = init
         self.adapt = adapt
         self.history_only = bool(history_only)
+        self.no_history = bool(no_history)
+        if self.history_only and self.no_history:
+            raise ValueError("history_only and no_history are opposite ablations")
+        self.response_kwargs = {} if branch_dim is None else {"branch_dim": int(branch_dim)}
         self.encoder_kwargs = dict(encoder_kwargs or {})
         self.pretrain_kwargs = dict(pretrain_kwargs or {})
         if self.pretrain_kwargs:
@@ -110,6 +120,9 @@ class TxArm:
         self.fit_result = None
 
     def _prep(self, panel: Q3Panel) -> Q3Panel:
+        if self.no_history:
+            return dataclasses.replace(panel, history=np.zeros_like(panel.history),
+                                       history_mask=np.ones_like(panel.history_mask))
         if not self.history_only:
             return panel
         zero = np.zeros_like(panel.fundamentals)
@@ -169,7 +182,7 @@ class TxArm:
         if self.loaded_checkpoint is not None:
             self.loaded_checkpoint.require_before(before)
         self.model = ResponseModel(
-            encoder, n_fund=panel.fundamentals.shape[1], n_ctx=panel.context.shape[1]
+            encoder, n_fund=panel.fundamentals.shape[1], n_ctx=panel.context.shape[1], **self.response_kwargs
         ).to(resolve_device(self.device))
         if self.loaded_checkpoint is None:
             if kw.pop("warmup_epochs", 0):
