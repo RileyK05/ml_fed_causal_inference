@@ -291,7 +291,7 @@ def _compare_and_save(panel, makers, *, prefix, params, min_train, test_size, se
                            metrics={**result.metrics, **grade},
                            tables=dict(predictions=result.predictions, folds=result.folds, curves=result.curves))
         results[name] = result
-        rows.append(dict(arm=name, run_id=saved.run_id, mse=result.metrics["mse_per_meeting"],
+        rows.append(dict(arm=name, run_id=saved.run_id, path=str(saved.path), mse=result.metrics["mse_per_meeting"],
                          rank_ic=result.metrics.get("rank_ic"), **grade))
         print(pd.DataFrame([rows[-1]]).to_string(index=False), flush=True)
     for row in rows:
