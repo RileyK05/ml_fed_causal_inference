@@ -185,11 +185,33 @@ TOP_MONTHS = Dataset(
         ),
     ),
 )
+_LINKED = "gvkey IN (SELECT gvkey FROM {link})"
+CREDIT = (
+    Dataset(
+        "comp_ratings",
+        "S&P ratings by month: long-term issuer, subordinated debt, short-term. Compustat stopped "
+        "carrying S&P ratings in 2017.",
+        (Source("comp", "adsprate", ("gvkey", "datadate", "splticrm", "spsdrm", "spsticrm"), _LINKED),),
+    ),
+    Dataset(
+        "comp_fundq_cash",
+        "Quarterly cash-flow and interest items (year-to-date cash flows) for funding-dependence measures.",
+        (
+            Source(
+                "comp", "fundq",
+                ("gvkey", "datadate", "rdq", "fyearq", "fqtr", "oancfy", "capxy", "xintq", "oiadpq", "dvy"),
+                "indfmt = 'INDL' AND datafmt = 'STD' AND popsrc = 'D' AND consol = 'C' "
+                "AND datadate >= '{start}' AND gvkey IN (SELECT gvkey FROM {link})",
+            ),
+        ),
+    ),
+)
 _BY_NAME = {ds.name: ds for ds in DATASETS}
 UNIVERSES = {
     "sp500": (OUT, DATASETS),
     "top1500": (RAW / "wrds_top1500", (TOP_MONTHS, *(_BY_NAME[n] for n in ("crsp_daily", "ccm_link",
-                                                                           "comp_fundq", "comp_gics")))),
+                                                                           "comp_fundq", "comp_gics")),
+                                       *CREDIT)),
 }
 
 

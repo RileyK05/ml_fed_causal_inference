@@ -89,6 +89,23 @@ def test_two_part_keeps_pooled_meeting_mean_and_network_deviations(panel, monkey
     assert [n.seed for n in arm.nets] == [0, 1]
 
 
+def test_sector_columns_are_one_hot_and_pass_the_scaler_unchanged(panel):
+    import pandas as pd
+    from fedenc.workflow import GICS_SECTORS, with_sector
+
+    n = len(panel.target)
+    codes = np.array(["45", "10", None, "60.0", "99"] * n, dtype=object)[:n]  # None / 99: unknown
+    out = with_sector(panel, pd.DataFrame({"gsector": codes}))
+    k = panel.fundamentals.shape[1]
+    onehot, mask = out.fundamentals[:, k:], out.fundamentals_mask[:, k:]
+    assert onehot.shape[1] == len(GICS_SECTORS)
+    assert onehot[0, GICS_SECTORS.index("45")] == 1 and onehot[0].sum() == 1
+    assert onehot[3, GICS_SECTORS.index("60")] == 1 and mask[3].all()
+    assert np.isnan(onehot[2]).all() and not mask[2].any() and not mask[4].any()
+    scaled = ChannelScaler.fit(out).transform(out)["fundamentals"][:, k:]
+    np.testing.assert_array_equal(scaled, np.nan_to_num(onehot) * mask)
+
+
 def test_reference_objective_is_the_shared_meeting_mse(panel):
     from fedcore.q3 import ResponseModel
     from fedcore.q3.train import _eval_loss

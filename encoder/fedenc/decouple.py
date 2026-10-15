@@ -299,11 +299,12 @@ def run(through="2009-03-18", seeds=(0, 1, 2), min_train=60, test_size=16, devic
 
 
 def confirm(through="2009-03-18", seeds=(3, 4, 5), members=3, min_train=60, test_size=16, device=None,
-            store=None, universe="sp500"):
+            store=None, universe="sp500", sector=False):
     """Re-test the two-part model on fresh seeds, with the plain transformer refit alongside. Training.
 
     With a broader ``universe`` the arms train on every row; diagnostics run on all rows and
-    again on the S&P 500 rows only, which compare with the S&P-only panel's scores."""
+    again on the S&P 500 rows only, which compare with the S&P-only panel's scores. ``sector``
+    adds GICS sector one-hot columns to the fundamentals branch."""
     from fedcore.q3.baselines import BASELINES
     from fedcore.q3.real import UNIVERSES
     from fedcore.results import ResultStore
@@ -312,7 +313,7 @@ def confirm(through="2009-03-18", seeds=(3, 4, 5), members=3, min_train=60, test
     from fedenc.daily import _compare_and_save
     from fedenc.workflow import bounded_panel
 
-    panel, through, rows = bounded_panel(through, universe=universe, with_rows=True)
+    panel, through, rows = bounded_panel(through, universe=universe, with_rows=True, sector=sector)
     store = store or ResultStore(RESULTS)
     makers = {
         "tx_scratch": lambda seed: DecoupleArm(seed, device=device),
@@ -320,9 +321,10 @@ def confirm(through="2009-03-18", seeds=(3, 4, 5), members=3, min_train=60, test
         "pooled": BASELINES["pooled"],
     }
     prefix = "twopart-confirm" if universe == "sp500" else f"twopart-{universe}"
+    prefix += "-sector" if sector else ""
     summary = _compare_and_save(panel, makers, prefix=prefix,
                                 params=dict(through=str(through.date()), lambda_mean=LAMBDA_CROSS_FIRM,
-                                            members=members, universe=universe),
+                                            members=members, universe=universe, sector=sector),
                                 min_train=min_train, test_size=test_size, seeds=seeds, store=store,
                                 datasets=UNIVERSES[universe].inputs)
     runs = {arm.removeprefix("tx_"): Path(path) for arm, path in zip(summary["arm"], summary["path"])}
@@ -349,12 +351,13 @@ def main(argv=None):
         if name == "confirm":
             q.add_argument("--members", type=int, default=3)
             q.add_argument("--universe", default="sp500")
+            q.add_argument("--sector", action="store_true", help="add GICS sector to the fundamentals")
     args = p.parse_args(argv)
     if args.command == "run":
         run(args.through, seeds=tuple(args.seeds), device=args.device)
     else:
         confirm(args.through, seeds=tuple(args.seeds), members=args.members, device=args.device,
-                universe=args.universe)
+                universe=args.universe, sector=args.sector)
 
 
 if __name__ == "__main__":

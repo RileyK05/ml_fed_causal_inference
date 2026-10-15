@@ -53,16 +53,38 @@ def corpus_audit(corpus, val_frac):
     )
 
 
-def bounded_panel(through, universe="sp500", with_rows=False):
+GICS_SECTORS = ("10", "15", "20", "25", "30", "35", "40", "45", "50", "55", "60")
+
+
+def with_sector(panel, rows):
+    """Append GICS sector one-hot columns to the fundamentals (observed when the sector is known).
+
+    One-hot columns have median 0 and IQR 0, so the trainer's scaler leaves them as 0/1."""
+    import dataclasses
+
+    code = rows["gsector"].astype("string").str[:2].fillna("").to_numpy(dtype=object)
+    onehot = np.stack([code == s for s in GICS_SECTORS], axis=1).astype(np.float32)
+    known = np.repeat(np.isin(code, GICS_SECTORS)[:, None], len(GICS_SECTORS), axis=1)
+    onehot[~known] = np.nan  # the panel contract: unobserved entries are NaN
+    out = dataclasses.replace(panel, fundamentals=np.concatenate([panel.fundamentals, onehot], axis=1),
+                              fundamentals_mask=np.concatenate([panel.fundamentals_mask, known], axis=1))
+    out.validate()
+    return out
+
+
+def bounded_panel(through, universe="sp500", with_rows=False, sector=False):
     """The real panel through an inclusive historical date; never the 2026 holdout.
 
-    ``with_rows`` also returns the matching row metadata (meeting, permno, in_sp500, ...)."""
+    ``with_rows`` also returns the matching row metadata (meeting, permno, in_sp500, ...).
+    ``sector`` appends GICS sector one-hot columns to the fundamentals (see ``with_sector``)."""
     from fedcore.q3.real import load_real_panel
 
     through = pd.Timestamp(through)
     if pd.isna(through) or through >= pd.Timestamp("2026-01-01"):
         raise ValueError("through must be a historical date before the separate 2026 holdout")
     panel, rows, _ = load_real_panel(universe=universe)
+    if sector:
+        panel = with_sector(panel, rows)
     keep = np.flatnonzero(panel.meeting <= through.to_datetime64())
     if with_rows:
         return panel.subset(keep), through, rows.iloc[keep].reset_index(drop=True)
