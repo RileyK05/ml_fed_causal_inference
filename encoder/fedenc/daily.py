@@ -31,9 +31,11 @@ import torch
 from fedcore.data import load
 from fedcore.q3 import ResponseModel
 from fedcore.q3.train import (
-    _eval_loss, _meeting_index_groups, _meeting_rows, _tensors, _train_epoch,
-    fit as train_fit, predict as train_predict, resolve_device, seed_everything, validation_meetings,
+    ChannelScaler, _forward, _meeting_index_groups, _meeting_rows, _tensors, _train_epoch,
+    predict as train_predict, resolve_device, seed_everything, validation_meetings,
 )
+
+EVAL_CHUNK = 4096  # rows per evaluation pass; the shared trainer scores everything at once
 from fedenc.encoder_transformer import PatchTransformerEncoder
 
 
@@ -81,35 +83,40 @@ def _subset_before(panel, cutoff):
     return panel.subset(np.flatnonzero(panel.meeting < np.datetime64(pd.Timestamp(cutoff))))
 
 
-def post_train(model, panel, scaler, *, lr=1e-3, pretrained_lr=1e-4, weight_decay=1e-4,
-               max_epochs=40, patience=10, val_frac=0.15, seed=0, meetings_per_batch=4):
-    """Fed-day training of a pretrained model with the pretraining scaler kept fixed.
+def _eval_chunked(model, batch, chunk=EVAL_CHUNK) -> float:
+    """Mean over days/meetings of the within-day MSE, scored ``chunk`` rows at a time."""
+    model.eval()
+    codes = batch["codes"]
+    width = int(codes.max().item()) + 1
+    sse = torch.zeros(width, dtype=torch.float64, device=codes.device)
+    count = torch.zeros(width, dtype=torch.float64, device=codes.device)
+    with torch.no_grad():
+        for start in range(0, codes.numel(), chunk):
+            rows = slice(start, start + chunk)
+            mu, _, _ = _forward(model, batch, rows)
+            err = (mu.double() - batch["target"][rows].double()) ** 2
+            sse.index_add_(0, codes[rows], err)
+            count.index_add_(0, codes[rows], torch.ones_like(err))
+    model.train()
+    keep = count > 0
+    return float((sse[keep] / count[keep]).mean().item())
 
-    The b head never trained (s was 0), so it gets ``lr``; every pretrained weight gets
-    ``pretrained_lr``. Early stopping on the last Fed meetings, as in the shared trainer.
-    """
-    seed_everything(seed)
-    val_m = validation_meetings(panel, val_frac)
-    train_m = panel.meetings()[:-len(val_m)]
+
+def _loop(model, optimizer, panel, train_m, val_m, scaler, *, max_epochs, patience, seed, meetings_per_batch=4):
+    """Meeting-batched epochs with chunked evaluation and early stopping on ``val_m``."""
     device = next(model.parameters()).device
-    train_batch = _tensors(panel.subset(_meeting_rows(panel, train_m)), scaler, device)
+    train_part = panel.subset(_meeting_rows(panel, train_m))
+    train_batch = _tensors(train_part, scaler, device)
     val_batch = _tensors(panel.subset(_meeting_rows(panel, val_m)), scaler, device)
-    b_ids = {id(p) for p in model.head.b.parameters()}
-    groups = [
-        {"params": [p for p in model.parameters() if id(p) in b_ids], "lr": lr, "weight_decay": weight_decay},
-        {"params": [p for p in model.parameters() if id(p) not in b_ids], "lr": pretrained_lr,
-         "weight_decay": weight_decay},
-    ]
-    optimizer = torch.optim.AdamW(groups)
     rng = np.random.default_rng(seed)
-    index = _meeting_index_groups(np.asarray(panel.subset(_meeting_rows(panel, train_m)).meeting))
+    index = _meeting_index_groups(np.asarray(train_part.meeting))
     best_val, best_epoch, stale = math.inf, 0, 0
     best_state = {k: v.detach().clone() for k, v in model.state_dict().items()}
     train_curve, val_curve = [], []
     for epoch in range(1, max_epochs + 1):
         _train_epoch(model, optimizer, train_batch, index, rng, meetings_per_batch, len(index), False)
-        train_curve.append(_eval_loss(model, train_batch, False))
-        val_curve.append(_eval_loss(model, val_batch, False))
+        train_curve.append(_eval_chunked(model, train_batch))
+        val_curve.append(_eval_chunked(model, val_batch))
         if val_curve[-1] < best_val:
             best_val, best_epoch, stale = val_curve[-1], epoch, 0
             best_state = {k: v.detach().clone() for k, v in model.state_dict().items()}
@@ -119,8 +126,43 @@ def post_train(model, panel, scaler, *, lr=1e-3, pretrained_lr=1e-4, weight_deca
                 break
     model.load_state_dict(best_state)
     model.eval()
-    return dict(train_loss=train_curve, val_loss=val_curve, best_epoch=best_epoch, best_val_loss=best_val,
-                val_meetings=val_m)
+    return argparse.Namespace(train_loss=train_curve, val_loss=val_curve, best_epoch=best_epoch,
+                              best_val_loss=best_val, train_meetings=pd.DatetimeIndex(train_m),
+                              val_meetings=pd.DatetimeIndex(val_m))
+
+
+def pretrain(model, daily, *, lr=1e-3, weight_decay=1e-4, max_epochs=20, patience=3, val_frac=0.15, seed=0):
+    """Ordinary-day training of the whole model (s = 0); the scaler fits on training days only."""
+    seed_everything(seed)
+    val_m = validation_meetings(daily, val_frac)
+    train_m = daily.meetings()[:-len(val_m)]
+    scaler = ChannelScaler.fit(daily.subset(_meeting_rows(daily, train_m)))
+    optimizer = torch.optim.AdamW(model.parameters(), lr=lr, weight_decay=weight_decay)
+    result = _loop(model, optimizer, daily, train_m, val_m, scaler, max_epochs=max_epochs,
+                   patience=patience, seed=seed)
+    result.scaler = scaler
+    return result
+
+
+def post_train(model, panel, scaler, *, lr=1e-3, pretrained_lr=1e-4, weight_decay=1e-4,
+               max_epochs=40, patience=10, val_frac=0.15, seed=0):
+    """Fed-day training of a pretrained model with the pretraining scaler kept fixed.
+
+    The b head never trained (s was 0), so it gets ``lr``; every pretrained weight gets
+    ``pretrained_lr``. Early stopping on the last Fed meetings, as in the shared trainer.
+    """
+    seed_everything(seed)
+    val_m = validation_meetings(panel, val_frac)
+    train_m = panel.meetings()[:-len(val_m)]
+    b_ids = {id(p) for p in model.head.b.parameters()}
+    groups = [
+        {"params": [p for p in model.parameters() if id(p) in b_ids], "lr": lr, "weight_decay": weight_decay},
+        {"params": [p for p in model.parameters() if id(p) not in b_ids], "lr": pretrained_lr,
+         "weight_decay": weight_decay},
+    ]
+    optimizer = torch.optim.AdamW(groups)
+    return _loop(model, optimizer, panel, train_m, val_m, scaler, max_epochs=max_epochs,
+                 patience=patience, seed=seed)
 
 
 class DailyArm:
@@ -145,15 +187,15 @@ class DailyArm:
         seed_everything(seed)
         self.model = ResponseModel(PatchTransformerEncoder(), n_fund=panel.fundamentals.shape[1],
                                    n_ctx=panel.context.shape[1]).to(resolve_device(self.device))
-        self.pretrain_result = train_fit(self.model, daily, max_epochs=self.pretrain_epochs,
-                                         patience=self.pretrain_patience, seed=seed)
+        self.pretrain_result = pretrain(self.model, daily, max_epochs=self.pretrain_epochs,
+                                        patience=self.pretrain_patience, seed=seed)
         self.scaler = self.pretrain_result.scaler
-        out = post_train(self.model, panel, self.scaler, max_epochs=self.max_epochs,
-                         patience=self.patience, seed=seed)
-        self.fit_result = argparse.Namespace(best_epoch=out["best_epoch"], best_val_loss=out["best_val_loss"],
-                                             val_meetings=out["val_meetings"], train_loss=out["train_loss"],
-                                             val_loss=out["val_loss"])
+        self.fit_result = post_train(self.model, panel, self.scaler, max_epochs=self.max_epochs,
+                                     patience=self.patience, seed=seed)
         self.cutoff = cutoff
+        print(f"  fold cutoff {pd.Timestamp(cutoff).date()} seed {seed}: pretrain best epoch "
+              f"{self.pretrain_result.best_epoch} on {len(daily.meetings())} days; post-train best epoch "
+              f"{self.fit_result.best_epoch}", flush=True)
 
     def predict(self, panel):
         if self.model is None:

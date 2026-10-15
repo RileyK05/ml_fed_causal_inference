@@ -88,3 +88,16 @@ def test_b_grade_is_one_for_oracle_and_nan_for_constant_b():
     assert b_grade(df, shock)["b_slope"] == pytest.approx(1.0, abs=1e-6)
     flat = df.assign(b_hat=1.0)
     assert np.isnan(b_grade(flat, shock)["b_slope"])
+
+
+def test_chunked_evaluation_matches_shared_meeting_mse():
+    from fedcore.q3 import ResponseModel
+    from fedcore.q3.train import ChannelScaler, _eval_loss, _tensors
+    from fedenc.encoder_transformer import PatchTransformerEncoder
+
+    panel = make_synthetic_panel(n_firms=5, n_meetings=6, seed=2)
+    torch.manual_seed(0)
+    model = ResponseModel(PatchTransformerEncoder(d_model=8, n_layers=1, n_heads=2, dim_feedforward=16),
+                          n_fund=panel.fundamentals.shape[1], n_ctx=panel.context.shape[1])
+    batch = _tensors(panel, ChannelScaler.fit(panel), torch.device("cpu"))
+    assert daily._eval_chunked(model, batch, chunk=7) == pytest.approx(_eval_loss(model, batch, False), rel=1e-5)
