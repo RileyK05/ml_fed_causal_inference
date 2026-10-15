@@ -250,7 +250,7 @@ def test_evaluation_preflight_rejects_late_checkpoint_without_fitting(checkpoint
     late = dataclasses.replace(checkpoint, params={**checkpoint.params,
                                                  "available_through": "2025-12-31"})
     monkeypatch.setattr(workflow, "load_checkpoint", lambda path: late)
-    monkeypatch.setattr(real, "load_real_panel", lambda: (panel, None, {}))
+    monkeypatch.setattr(real, "load_real_panel", lambda **_: (panel, None, {}))
     monkeypatch.setattr(workflow, "run_walk_forward", lambda *a, **k: pytest.fail("must not fit"))
     with pytest.raises(ValueError, match="must precede"):
         workflow.evaluate_checkpoint("unused", through="2009-03-18", min_train=4, test_size=2)
@@ -269,7 +269,7 @@ def test_three_way_runner_saves_traceable_artifacts_without_optimizer_steps(chec
     baseline.params["objective"] = OBJECTIVES[1]
     masked_run = save_checkpoint(baseline, ResultStore(tmp_path / "masked"))
     panel = make_synthetic_panel(n_firms=3, n_meetings=8, seed=0)
-    monkeypatch.setattr(real, "load_real_panel", lambda: (panel, None, {}))
+    monkeypatch.setattr(real, "load_real_panel", lambda **_: (panel, None, {}))
 
     def fake_walk_forward(panel, factory, **kwargs):
         # Fabricate fitted artifacts without fitting anything or saving trained weights.
@@ -434,7 +434,7 @@ def test_per_fold_runner_records_which_checkpoint_each_fold_used(tmp_path, monke
     nxt = [_checkpoint_at(tmp_path, d, f"n{i}") for i, d in enumerate(dates)]
     msk = [_checkpoint_at(tmp_path, d, f"m{i}", OBJECTIVES[1]) for i, d in enumerate(dates)]
     panel = make_synthetic_panel(n_firms=3, n_meetings=8, seed=0)
-    monkeypatch.setattr(real, "load_real_panel", lambda: (panel, None, {}))
+    monkeypatch.setattr(real, "load_real_panel", lambda **_: (panel, None, {}))
 
     def fake_walk_forward(panel, factory, **kwargs):
         arm = factory(0)

@@ -14,6 +14,14 @@ first one that does and fails before downloading anything if a dataset has none.
 
 Raw files keep WRDS's native column names (raw is untouched downloads); renaming and joins
 happen in interim. Universe: every PERMNO in the S&P 500 at any point since START.
+
+``--universe top1500`` pulls a broader universe into ``raw/wrds_top1500/`` instead: every
+US common stock (NYSE/AMEX/Nasdaq) ranked in the top 1,500 by market cap at any month-end
+since START. Only the tables the panel needs are pulled; the month-end ranks are saved as
+``top1500_months`` so the universe is auditable. ``sp500_members`` and the factors stay in
+``raw/wrds/``.
+
+    python -m fedcore.ingest.wrds pull --user <wrds username> --universe top1500
 """
 from __future__ import annotations
 
@@ -38,6 +46,7 @@ class Source:
     table: str
     columns: tuple[str, ...]
     where: str = ""  # SQL predicate; {start} and {members} are filled in
+    query: str = ""  # full SELECT instead of columns + where (the universe ranking)
 
 
 @dataclass(frozen=True)
@@ -49,8 +58,13 @@ class Dataset:
     needs: tuple[str, ...] = field(default_factory=tuple)  # notes recorded in the manifest
 
 
-def _members_sql(src: Source) -> str:
-    """Server-side subquery: PERMNOs in the S&P 500 at any point on or after START."""
+def _members_sql(chosen: dict) -> str:
+    """Server-side subquery: the universe's PERMNOs. S&P 500 members at any point on or after
+    START, or every stock in the month-end top ranks when the universe is top1500."""
+    top = chosen.get("top1500_months")
+    if top is not None:
+        return f"SELECT DISTINCT permno FROM ({top.query.format(start=START)}) universe"
+    src = chosen["sp500_members"]
     end_col = src.columns[2]
     return f"SELECT DISTINCT permno FROM {src.library}.{src.table} WHERE {end_col} >= '{START}' OR {end_col} IS NULL"
 
@@ -153,6 +167,32 @@ DATASETS = (
 )
 
 
+TOP_N = 1500
+_CIZ_COMMON = ("sharetype = 'NS' AND securitytype = 'EQTY' AND securitysubtype = 'COM' AND usincflg = 'Y' "
+               "AND issuertype IN ('ACOR', 'CORP') AND primaryexch IN ('N', 'A', 'Q')")
+TOP_MONTHS = Dataset(
+    "top1500_months",
+    f"Month-end market-cap rank (1 = largest) of US common stocks, top {TOP_N} only. Defines the universe.",
+    (
+        Source(
+            "crsp", "msf_v2",
+            ("permno", "mthcaldt", "mthprc", "shrout", "sharetype", "securitytype", "securitysubtype",
+             "usincflg", "issuertype", "primaryexch"),
+            query=(f"SELECT permno, mthcaldt, mktcap_rank FROM (SELECT permno, mthcaldt, RANK() OVER "
+                   f"(PARTITION BY mthcaldt ORDER BY ABS(mthprc) * shrout DESC) AS mktcap_rank FROM crsp.msf_v2 "
+                   f"WHERE mthcaldt >= '{{start}}' AND {_CIZ_COMMON} AND mthprc IS NOT NULL AND shrout > 0) ranked "
+                   f"WHERE mktcap_rank <= {TOP_N}"),
+        ),
+    ),
+)
+_BY_NAME = {ds.name: ds for ds in DATASETS}
+UNIVERSES = {
+    "sp500": (OUT, DATASETS),
+    "top1500": (RAW / "wrds_top1500", (TOP_MONTHS, *(_BY_NAME[n] for n in ("crsp_daily", "ccm_link",
+                                                                           "comp_fundq", "comp_gics")))),
+}
+
+
 def connect(user: str | None):
     try:
         import wrds
@@ -182,10 +222,10 @@ def _readable(db, src: Source) -> bool:
         return False
 
 
-def resolve(db) -> dict[str, Source | None]:
+def resolve(db, datasets=DATASETS) -> dict[str, Source | None]:
     """First candidate per dataset that exists, has every needed column, and is readable."""
     chosen: dict[str, Source | None] = {}
-    for ds in DATASETS:
+    for ds in datasets:
         chosen[ds.name] = None
         for src in ds.sources:
             cols = _columns(db, src)
@@ -204,7 +244,7 @@ def resolve(db) -> dict[str, Source | None]:
 
 
 def _where(src: Source, chosen: dict[str, Source | None]) -> str:
-    members = _members_sql(chosen["sp500_members"])
+    members = _members_sql(chosen)
     link = chosen.get("ccm_link")
     link_sql = f"{link.library}.{link.table} WHERE {link.where.format(members=members)}" if link else "(SELECT NULL AS gvkey) x"
     return src.where.format(start=START, members=members, link=link_sql)
@@ -217,25 +257,38 @@ def _write_atomic(frame, path) -> None:
     os.replace(tmp, path)
 
 
-def pull(db, chosen: dict[str, Source | None], only: set[str] | None = None) -> dict:
-    """Download every dataset (or just ``only``); the manifest keeps earlier entries."""
-    OUT.mkdir(parents=True, exist_ok=True)
-    manifest_file = OUT / "_manifest.json"
+def pull(db, chosen: dict[str, Source | None], only: set[str] | None = None, out=OUT,
+         datasets=DATASETS, resume: bool = False) -> dict:
+    """Download every dataset (or just ``only``) into ``out``; the manifest keeps earlier entries.
+
+    ``resume`` keeps yearly parts already on disk (an interrupted pull) instead of re-downloading."""
+    import pandas as pd
+
+    out.mkdir(parents=True, exist_ok=True)
+    manifest_file = out / "_manifest.json"
     manifest = json.loads(manifest_file.read_text(encoding="utf-8")) if manifest_file.exists() else {"datasets": {}}
     manifest.update({"start": START})
-    for ds in DATASETS:
+    for ds in datasets:
         src = chosen[ds.name]
         if src is None or (only and ds.name not in only):
             continue
-        where = _where(src, chosen)
-        base = f"SELECT {', '.join(src.columns)} FROM {src.library}.{src.table}"
-        sql = f"{base} WHERE {where}" if where else base
+        if src.query:
+            sql = src.query.format(start=START)
+        else:
+            where = _where(src, chosen)
+            base = f"SELECT {', '.join(src.columns)} FROM {src.library}.{src.table}"
+            sql = f"{base} WHERE {where}" if where else base
         if ds.by_year:
             date_col = src.columns[1]
-            folder = OUT / ds.name
+            folder = out / ds.name
             folder.mkdir(exist_ok=True)
             rows = 0
             for year in range(int(START[:4]), date.today().year + 1):
+                done = folder / f"{year}.parquet"
+                if resume and done.exists():  # written atomically, so an existing part is complete
+                    rows += len(pd.read_parquet(done, columns=[src.columns[0]]))
+                    print(f"  {ds.name} {year}: kept from an earlier pull", flush=True)
+                    continue
                 part = db.raw_sql(f"{sql} AND {date_col} BETWEEN '{year}-01-01' AND '{year}-12-31'")
                 if part.empty:  # the vintage ends before this year
                     continue
@@ -245,7 +298,7 @@ def pull(db, chosen: dict[str, Source | None], only: set[str] | None = None) -> 
             path = f"{ds.name}/"
         else:
             frame = db.raw_sql(sql)
-            _write_atomic(frame, OUT / f"{ds.name}.parquet")
+            _write_atomic(frame, out / f"{ds.name}.parquet")
             rows = len(frame)
             path = f"{ds.name}.parquet"
             print(f"  {ds.name}: {rows:,} rows", flush=True)
@@ -263,16 +316,19 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("command", choices=("discover", "pull"))
     parser.add_argument("--user", help="WRDS username (or set WRDS_USERNAME)")
     parser.add_argument("--only", help="comma-separated dataset names to pull (default: all)")
+    parser.add_argument("--universe", choices=tuple(UNIVERSES), default="sp500")
+    parser.add_argument("--resume", action="store_true", help="keep yearly parts already downloaded")
     args = parser.parse_args(argv)
+    out, datasets = UNIVERSES[args.universe]
     only = set(args.only.split(",")) if args.only else None
-    unknown = (only or set()) - {ds.name for ds in DATASETS}
+    unknown = (only or set()) - {ds.name for ds in datasets}
     if unknown:
         sys.exit(f"unknown dataset(s): {sorted(unknown)}")
 
     db = connect(args.user)
     try:
         print("Checking WRDS tables:")
-        chosen = resolve(db)
+        chosen = resolve(db, datasets)
         missing = [name for name, src in chosen.items() if src is None and name != "crsp_delist"]
         if missing:
             sys.exit(f"no usable source for: {', '.join(missing)}. Nothing was downloaded.")
@@ -280,8 +336,8 @@ def main(argv: list[str] | None = None) -> None:
         if unresolved:
             sys.exit(f"no usable source for requested: {', '.join(unresolved)}. Nothing was downloaded.")
         if args.command == "pull":
-            pull(db, chosen, only)
-            print(f"Done. Files in {OUT}")
+            pull(db, chosen, only, out, datasets, resume=args.resume)
+            print(f"Done. Files in {out}")
     finally:
         db.close()
 

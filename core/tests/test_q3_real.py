@@ -116,6 +116,23 @@ def test_sector_before_gics_history_is_backfilled_and_labeled():
     assert r.loc[M2, "gsector_source"] == "asof"
 
 
+def test_top_n_universe_ranks_by_prior_close_cap_and_flags_sp500():
+    inp = _inputs()
+    daily = inp.daily.copy()
+    daily.loc[daily["permno"] == 3, "shrout"] = 5000  # permno 3 is the largest firm
+    # permno 1 is the smallest until the day before M2, when it becomes the largest.
+    daily.loc[daily["permno"] == 1, "shrout"] = 100
+    daily.loc[(daily["permno"] == 1) & (daily["dlycaldt"] == DAYS[279]), "shrout"] = 9000
+    _, rows, notes = build_panel(Inputs(**{**inp.__dict__, "daily": daily}), top_n=2)
+    got = {d: sorted(g["permno"]) for d, g in rows.groupby("meeting")}
+    assert got == {M1: [2, 3], M2: [1, 3]}  # permno 3 is not yet an S&P member at M1
+    flags = rows.set_index(["meeting", "permno"])["in_sp500"]
+    assert not flags[(M1, 3)] and flags[(M1, 2)] and flags[(M2, 3)]
+    assert notes["top_n"] == 2
+    _, sp_rows, _ = build_panel(inp)
+    assert sp_rows["in_sp500"].all()
+
+
 def test_run_arms_real_uses_the_cached_panel(tmp_path, monkeypatch):
     tiny = make_synthetic_panel(n_firms=8, n_meetings=12, seed=0)
     meta = {"inputs": {"crsp_daily": "abc123"}}

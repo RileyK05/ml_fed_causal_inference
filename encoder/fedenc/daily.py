@@ -274,10 +274,12 @@ def run(through="2009-03-18", every=10, seeds=(0,), min_train=60, test_size=16, 
     return summary
 
 
-def _compare_and_save(panel, makers, *, prefix, params, min_train, test_size, seeds, store):
+def _compare_and_save(panel, makers, *, prefix, params, min_train, test_size, seeds, store, datasets=None):
     """Fit each maker on the same folds; save runs; summary row per arm vs scratch."""
     from fedcore.q3.evaluate import compare, run_walk_forward
     from fedcore.q3.real import INPUTS
+
+    datasets = list(INPUTS) if datasets is None else list(datasets)
     from fedcore.questions import specs
 
     shock = pd.Series(panel.shock, index=pd.DatetimeIndex(panel.meeting)).groupby(level=0).first()
@@ -285,7 +287,7 @@ def _compare_and_save(panel, makers, *, prefix, params, min_train, test_size, se
     for name, make in makers.items():
         result = run_walk_forward(panel, make, min_train=min_train, test_size=test_size, seeds=tuple(seeds))
         grade = b_grade(result.predictions, shock)
-        saved = store.save(specs()["Q3"], f"{prefix}-{name}", role="exploratory", datasets=list(INPUTS),
+        saved = store.save(specs()["Q3"], f"{prefix}-{name}", role="exploratory", datasets=datasets,
                            params=dict(arm=name, seeds=list(seeds), min_train=min_train,
                                        test_size=test_size, **params),
                            metrics={**result.metrics, **grade},

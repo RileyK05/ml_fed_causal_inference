@@ -256,6 +256,57 @@ datasets:
     questions: [Q3]
     description: Ticker, trading symbol and share class per permno over time (exact share-class ticker mapping).
 
+  # ---- Broader Q3 universe: top 1,500 by market cap (pulled with --universe top1500) ----
+  top1500_months:
+    path: raw/wrds_top1500/top1500_months.parquet
+    layer: raw
+    source: CRSP via WRDS (crsp.msf_v2, ranked server-side)
+    grain: monthly
+    date_column: mthcaldt
+    key: [permno, mthcaldt]
+    questions: [Q3]
+    description: Month-end market-cap rank of US common stocks (NYSE/AMEX/Nasdaq), top 1,500 only. Defines the broad universe.
+
+  crsp_daily_top1500:
+    path: raw/wrds_top1500/crsp_daily
+    layer: raw
+    source: CRSP via WRDS (crsp.dsf_v2, CIZ format)
+    grain: daily
+    date_column: dlycaldt
+    key: [permno, dlycaldt]
+    questions: [Q3]
+    description: Daily returns, price, volume, shares for every stock ever in the month-end top 1,500 since 1993. One parquet per year.
+
+  ccm_link_top1500:
+    path: raw/wrds_top1500/ccm_link.parquet
+    layer: raw
+    source: CRSP/Compustat Merged via WRDS (crsp_a_ccm.ccmxpf_lnkhist)
+    grain: spell
+    date_column: linkdt
+    key: [gvkey, lpermno, linkdt]
+    questions: [Q3]
+    description: gvkey to permno links for the top-1,500 universe (LU/LC, primary P/C only).
+
+  comp_fundq_top1500:
+    path: raw/wrds_top1500/comp_fundq.parquet
+    layer: raw
+    source: Compustat North America via WRDS (comp.fundq)
+    grain: quarterly
+    date_column: datadate
+    key: [gvkey, datadate, fyearq, fqtr]
+    questions: [Q3]
+    description: Quarterly fundamentals for the top-1,500 universe; join on report date rdq.
+
+  comp_gics_top1500:
+    path: raw/wrds_top1500/comp_gics.parquet
+    layer: raw
+    source: Compustat via WRDS (comp.co_hgic)
+    grain: spell
+    date_column: indfrom
+    key: [gvkey, indfrom]
+    questions: [Q3]
+    description: Historical GICS codes for the top-1,500 universe.
+
   # ---- 2026 holdout extension (yfinance; CRSP's annual vintage ends 2025-12-31) ----
   wiki_sp500_constituents:
     path: raw/wikipedia/sp500_constituents.csv

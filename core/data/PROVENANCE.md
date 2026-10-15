@@ -179,6 +179,28 @@ Python env: project `.venv`, see the root README.
 - **Known gaps:** Book-to-market reaches -78/+20 for firms with tiny or negative book equity; the trainer's median/IQR scaling clips at +/-5.
 - **Sanity check (not a model):** the meeting-average return regressed on `s` gives -1.05% per 10bp over the 253 meetings, in line with the Q1 DML estimate (-0.96).
 
+### 7b. Broader universe: top 1,500 by market cap (`raw/wrds_top1500/`, gitignored)
+- **Pulled by:** `python -m fedcore.ingest.wrds pull --user <name> --universe top1500` on 2026-10-15 (interrupted once, finished with `--resume`; finished yearly parts are written atomically, so kept parts are complete). `_manifest.json` records every query.
+- **Universe:** every PERMNO ranked in the top 1,500 by month-end market cap (`|mthprc| x shrout`) among US common stocks on NYSE/AMEX/Nasdaq at any month-end since 1993-01 (CIZ filter: `sharetype NS`, `securitytype EQTY`, `securitysubtype COM`, `usincflg Y`, `issuertype ACOR/CORP`, `primaryexch N/A/Q`; the CIZ equivalent of share codes 10/11). 6,530 firms. The filter excludes REITs and foreign-incorporated firms, so about 26 S&P 500 members per meeting are not in this universe.
+- **Same licence and vintage as section 7:** WRDS terms, CRSP CIZ annual update ending 2025-12-31.
+
+| Dataset | Source table | Rows | Notes |
+|---|---|---|---|
+| `top1500_months` | crsp.msf_v2 (ranked server-side) | 594,000 | permno, mthcaldt, mktcap_rank; exactly 1,500 per month, 1993-01 to 2025-12 |
+| `crsp_daily_top1500` | crsp.dsf_v2 | about 21.5M | Same columns as `crsp_daily`; one parquet per year |
+| `ccm_link_top1500` | crsp_a_ccm.ccmxpf_lnkhist | 7,340 | LU/LC, P/C |
+| `comp_fundq_top1500` | comp.fundq | 393,964 | INDL/STD/D/C |
+| `comp_gics_top1500` | comp.co_hgic | 8,491 | |
+
+- **Derived panel** (`processed/q3_panel_top1500/`, gitignored): `load_real_panel(universe="top1500")`. Rows are the 1,500 largest firms by market cap at the prior close of each meeting (point-in-time, from the daily file). Build of 2026-10-15: 379,460 rows, 253 meetings, 6,186 firms, 1,497-1,500 per meeting; `in_sp500` flags 31.7% of rows (461-489 per meeting). Fundamentals observed for about 98% of rows. Targets on the S&P rows match the section-7 panel exactly.
+- **Not run:** any model. A descriptive check on the development meetings found no difference in surprise response across size terciles.
+
+## 7a. BLS macro release dates (Q3)
+- **Source:** BLS archived news release index pages, `https://www.bls.gov/bls/news-release/cpi.htm` and `https://www.bls.gov/bls/news-release/empsit.htm`, read via the browser pane on 2026-10-14 (bls.gov returns HTTP 403 to scripts). Each archived release file is named by its release date (`cpi_MMDDYYYY`, `empsit_MMDDYYYY`, and for the 1990s jobs reports `empsit_MMDDYY`); the dates were taken from those file names.
+- **File:** `raw/bls/bls_macro_release_dates.csv`, 719 rows, columns `release` (`cpi` / `employment_situation`) and `release_date`.
+- **Coverage:** jobs reports every month from 1994-02-04 (392 dates). CPI from 1999-06-16 (327 dates): the archive has no dated CPI files before mid-1999, and ALFRED's CPIAUCSL vintages are not monthly in that period, so 1994-1999 CPI dates are missing, not guessed. 2025 has 11 of each (shutdown).
+- **Checks:** all 44 dates in `bls_cpi_release_dates.csv` (2022-12 onward, compiled separately from the BLS schedule pages) match. Jobs reports fall on Fridays except 16 holiday/shutdown shifts.
+
 ## 8. 2026 holdout extension (yfinance)
 - **Why:** the school's CRSP subscription is the annual vintage, ending 2025-12-31. The six 2026 statements (01-28, 03-18, 04-29, 06-17, 07-29, 09-16) get firm data from yfinance until the next vintage replaces it.
 - **Pulled by:** `python -m fedcore.ingest.yf_firms pull` (retries tickers Yahoo drops under load). Also pulled two small WRDS lookups for the mapping: `crsp_names` (crsp.stksecurityinfohist) and `comp_company` (comp.company: name and CIK; a lookup table with no date, so read directly rather than registered in the catalog).

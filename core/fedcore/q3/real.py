@@ -5,7 +5,8 @@ synthetic panel's channel definitions, so every arm runs on it unchanged.
 
 - Rows: every firm in the S&P 500 on the meeting date (point-in-time membership, so firms
   that later left or delisted are included) with a meeting-day return and at least one
-  observed history day.
+  observed history day. The ``top1500`` universe instead takes the 1,500 largest firms by
+  market cap at the prior close from a broader pull, flagging S&P members in ``in_sp500``.
 - History: the 252 trading days before the meeting; ``history[:, -1]`` is the prior close.
   A day is observed when the firm has a return and positive volume and the market factor
   exists. Gaps stay NaN: nothing is filled.
@@ -23,6 +24,7 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 from datetime import date
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -47,10 +49,32 @@ BUILD_VERSION = 2
 # The synthetic panel falls back to the firm's true beta; real data has none, so use the market's.
 BETA_FALLBACK = 1.0
 CACHE = PROCESSED / "q3_panel"
-INPUTS = (
-    "crsp_daily", "sp500_members", "ff_factors_daily", "ccm_link", "comp_fundq", "comp_gics",
-    "usmpd_statements", "mps_surprises", "treasury_1y",
-)
+
+
+@dataclass(frozen=True)
+class Universe:
+    """Which firms are rows, and which raw tables feed them."""
+
+    name: str
+    top_n: int | None  # None: S&P 500 members on the meeting date; else the top_n by prior-close market cap
+    daily: str
+    link: str
+    fundq: str
+    gics: str
+    cache: Path | None  # None: the module-level CACHE
+
+    @property
+    def inputs(self) -> tuple[str, ...]:
+        return (self.daily, "sp500_members", "ff_factors_daily", self.link, self.fundq, self.gics,
+                "usmpd_statements", "mps_surprises", "treasury_1y")
+
+
+UNIVERSES = {
+    "sp500": Universe("sp500", None, "crsp_daily", "ccm_link", "comp_fundq", "comp_gics", None),
+    "top1500": Universe("top1500", 1500, "crsp_daily_top1500", "ccm_link_top1500", "comp_fundq_top1500",
+                        "comp_gics_top1500", PROCESSED / "q3_panel_top1500"),
+}
+INPUTS = UNIVERSES["sp500"].inputs
 _ARRAYS = (
     "meeting", "firm_id", "history", "history_mask", "fundamentals", "fundamentals_mask",
     "context", "shock", "target",
@@ -93,7 +117,9 @@ def meeting_table() -> pd.DataFrame:
     return df.reset_index(drop=True)
 
 
-def read_inputs() -> Inputs:
+def read_inputs(universe: str = "sp500") -> Inputs:
+    u = UNIVERSES[universe]
+
     def dates(df: pd.DataFrame, *cols: str) -> pd.DataFrame:
         for col in cols:
             df[col] = pd.to_datetime(df[col])
@@ -103,15 +129,15 @@ def read_inputs() -> Inputs:
         df["gvkey"] = df["gvkey"].astype(str)  # one plain type so the as-of joins match
         return df
 
-    link = gvkey(dates(load("ccm_link"), "linkenddt"))
+    link = gvkey(dates(load(u.link), "linkenddt"))
     link["lpermno"] = link["lpermno"].astype("int64")
     return Inputs(
-        daily=load("crsp_daily", columns=["permno", "dlyret", "dlyvol", "dlyprc", "shrout"]),
+        daily=load(u.daily, columns=["permno", "dlyret", "dlyvol", "dlyprc", "shrout"]),
         members=dates(load("sp500_members"), "mbrenddt"),
         market=load("ff_factors_daily", columns=["mktrf", "rf"]),
         link=link,
-        fundq=gvkey(dates(load("comp_fundq"), "rdq")),
-        gics=gvkey(dates(load("comp_gics"), "indthru")),
+        fundq=gvkey(dates(load(u.fundq), "rdq")),
+        gics=gvkey(dates(load(u.gics), "indthru")),
         meetings=meeting_table(),
     )
 
@@ -155,8 +181,13 @@ def _grid(daily: pd.DataFrame, market: pd.DataFrame) -> dict:
     }
 
 
-def _rows(grid: dict, members: pd.DataFrame, meetings: pd.DataFrame) -> tuple[pd.DataFrame, list[dict]]:
-    """One row per (meeting, member firm) that has a target and some history."""
+def _rows(grid: dict, members: pd.DataFrame, meetings: pd.DataFrame,
+          top_n: int | None = None) -> tuple[pd.DataFrame, list[dict]]:
+    """One row per (meeting, firm) that has a target and some history.
+
+    Firms are the S&P 500 members on the meeting date, or with ``top_n`` the ``top_n`` largest
+    by market cap at the prior close. ``in_sp500`` flags members either way.
+    """
     calendar, permnos = grid["calendar"], grid["permnos"]
     end = members["mbrenddt"].fillna(pd.Timestamp.max)
     rows, dropped = [], []
@@ -168,15 +199,21 @@ def _rows(grid: dict, members: pd.DataFrame, meetings: pd.DataFrame) -> tuple[pd
                             "reason": "not a trading day in the data" if p < 0 else "under 252 prior days"})
             continue
         in_index = members.loc[(members["mbrstartdt"] <= d) & (end >= d), "permno"].to_numpy(dtype=np.int64)
-        idx = np.searchsorted(permnos, in_index)
-        idx = idx[(idx < permnos.size) & (permnos[np.minimum(idx, permnos.size - 1)] == in_index)]
-        idx = np.unique(idx)
+        if top_n is None:
+            idx = np.searchsorted(permnos, in_index)
+            idx = idx[(idx < permnos.size) & (permnos[np.minimum(idx, permnos.size - 1)] == in_index)]
+            idx = np.unique(idx)
+        else:
+            cap = grid["mktcap"][:, p - 1]
+            ok = np.flatnonzero(np.isfinite(cap) & (cap > 0))
+            idx = np.sort(ok[np.argsort(-cap[ok], kind="stable")[:top_n]])
         keep = np.isfinite(grid["ret"][idx, p]) & grid["observed"][idx, p - L : p].any(axis=1)
         idx = idx[keep]
         if idx.size == 0:
             dropped.append({"announcement_date": d.date().isoformat(), "reason": "no member firm with data"})
             continue
-        rows.append(pd.DataFrame({"meeting": d, "pos": p, "firm": idx, "permno": permnos[idx]}))
+        rows.append(pd.DataFrame({"meeting": d, "pos": p, "firm": idx, "permno": permnos[idx],
+                                  "in_sp500": np.isin(permnos[idx], in_index)}))
     return pd.concat(rows, ignore_index=True), dropped
 
 
@@ -241,12 +278,12 @@ def _asof_sector(rows: pd.DataFrame, gics: pd.DataFrame) -> tuple[pd.Series, pd.
     return sector, source
 
 
-def build_panel(inputs: Inputs) -> tuple[Q3Panel, pd.DataFrame, dict]:
-    """Pure build from loaded tables: (panel, row metadata, build notes)."""
+def build_panel(inputs: Inputs, top_n: int | None = None) -> tuple[Q3Panel, pd.DataFrame, dict]:
+    """Pure build from loaded tables: (panel, row metadata, build notes). See ``_rows`` for ``top_n``."""
     grid = _grid(inputs.daily, inputs.market)
     meetings = inputs.meetings.dropna(subset=["s"])
     meetings = meetings[meetings["announcement_date"] <= grid["calendar"][-1]]
-    rows, dropped = _rows(grid, inputs.members, meetings)
+    rows, dropped = _rows(grid, inputs.members, meetings, top_n)
 
     # Context per meeting: Q1 controls + annualized 21-day market volatility to the prior close.
     ctx = meetings.set_index("announcement_date")
@@ -285,9 +322,11 @@ def build_panel(inputs: Inputs) -> tuple[Q3Panel, pd.DataFrame, dict]:
         target=grid["ret"][firm, p].astype(np.float32),
     )
     panel.validate()
-    meta_rows = rows[["meeting", "permno", "gvkey", "gsector", "gsector_source"]].assign(source="crsp")
+    meta_rows = rows[["meeting", "permno", "gvkey", "gsector", "gsector_source", "in_sp500"]].assign(source="crsp")
     notes = {
+        "top_n": top_n,
         "n_rows": len(rows),
+        "in_sp500_share": round(float(rows["in_sp500"].mean()), 4),
         "n_meetings": int(rows["meeting"].nunique()),
         "n_firms": int(rows["permno"].nunique()),
         "first_meeting": rows["meeting"].min().date().isoformat(),
@@ -508,27 +547,30 @@ def _load_cache(folder) -> tuple[Q3Panel, pd.DataFrame, dict]:
     return panel, pd.read_parquet(folder / "rows.parquet"), meta
 
 
-def load_real_panel(rebuild: bool = False) -> tuple[Q3Panel, pd.DataFrame, dict]:
+def load_real_panel(rebuild: bool = False, universe: str = "sp500") -> tuple[Q3Panel, pd.DataFrame, dict]:
     """The cached real panel, rebuilt when missing, forced, or when any input file changed.
 
-    Without the raw inputs (a remote GPU box given only ``processed/q3_panel/``) the cache
-    is used as is; its ``meta["inputs"]`` still records the data it was built from.
+    ``universe`` is a key of ``UNIVERSES``; each has its own raw tables and cache folder.
+    Without the raw inputs (a remote GPU box given only the cache folder) the cache is used
+    as is; its ``meta["inputs"]`` still records the data it was built from.
     """
-    meta_file = CACHE / "meta.json"
-    prints = _fingerprints(INPUTS)
+    u = UNIVERSES[universe]
+    cache = u.cache or CACHE
+    meta_file = cache / "meta.json"
+    prints = _fingerprints(u.inputs)
     if prints is None:
         if not meta_file.exists() or rebuild:
-            raise FileNotFoundError(f"no raw inputs to build from and no cached panel in {CACHE}")
-        return _load_cache(CACHE)
+            raise FileNotFoundError(f"no raw inputs to build from and no cached panel in {cache}")
+        return _load_cache(cache)
     if not rebuild and meta_file.exists():
         meta = json.loads(meta_file.read_text(encoding="utf-8"))
         if meta.get("inputs") == prints and meta.get("build_version") == BUILD_VERSION:
-            return _load_cache(CACHE)
-    panel, rows, notes = build_panel(read_inputs())
-    CACHE.mkdir(parents=True, exist_ok=True)
+            return _load_cache(cache)
+    panel, rows, notes = build_panel(read_inputs(universe), top_n=u.top_n)
+    cache.mkdir(parents=True, exist_ok=True)
     for name in _ARRAYS:
-        np.save(CACHE / f"{name}.npy", getattr(panel, name))
-    rows.to_parquet(CACHE / "rows.parquet", index=False)
+        np.save(cache / f"{name}.npy", getattr(panel, name))
+    rows.to_parquet(cache / "rows.parquet", index=False)
     meta = {"built": date.today().isoformat(), "build_version": BUILD_VERSION, "inputs": prints, **notes}
     meta_file.write_text(json.dumps(meta, indent=2), encoding="utf-8")
     return panel, rows, meta

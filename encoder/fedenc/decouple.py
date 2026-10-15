@@ -299,31 +299,42 @@ def run(through="2009-03-18", seeds=(0, 1, 2), min_train=60, test_size=16, devic
 
 
 def confirm(through="2009-03-18", seeds=(3, 4, 5), members=3, min_train=60, test_size=16, device=None,
-            store=None):
-    """Re-test the two-part model on fresh seeds, with the plain transformer refit alongside. Training."""
+            store=None, universe="sp500"):
+    """Re-test the two-part model on fresh seeds, with the plain transformer refit alongside. Training.
+
+    With a broader ``universe`` the arms train on every row; diagnostics run on all rows and
+    again on the S&P 500 rows only, which compare with the S&P-only panel's scores."""
     from fedcore.q3.baselines import BASELINES
+    from fedcore.q3.real import UNIVERSES
     from fedcore.results import ResultStore
     from fedenc import diagnostics
     from fedenc.config import RESULTS
     from fedenc.daily import _compare_and_save
     from fedenc.workflow import bounded_panel
 
-    panel, through = bounded_panel(through)
+    panel, through, rows = bounded_panel(through, universe=universe, with_rows=True)
     store = store or ResultStore(RESULTS)
     makers = {
         "tx_scratch": lambda seed: DecoupleArm(seed, device=device),
         "two_part": lambda seed: TwoPartArm(seed, members=members, device=device),
         "pooled": BASELINES["pooled"],
     }
-    summary = _compare_and_save(panel, makers, prefix="twopart-confirm",
+    prefix = "twopart-confirm" if universe == "sp500" else f"twopart-{universe}"
+    summary = _compare_and_save(panel, makers, prefix=prefix,
                                 params=dict(through=str(through.date()), lambda_mean=LAMBDA_CROSS_FIRM,
-                                            members=members),
-                                min_train=min_train, test_size=test_size, seeds=seeds, store=store)
+                                            members=members, universe=universe),
+                                min_train=min_train, test_size=test_size, seeds=seeds, store=store,
+                                datasets=UNIVERSES[universe].inputs)
     runs = {arm.removeprefix("tx_"): Path(path) for arm, path in zip(summary["arm"], summary["path"])}
-    tables = diagnostics.run(runs, ("pooled", "scratch"), store=store, panel=panel)
+    tables = {"all": diagnostics.run(runs, ("pooled", "scratch"), store=store, panel=panel)}
+    if universe != "sp500":
+        sp = rows.loc[rows["in_sp500"], ["meeting", "permno"]].rename(columns={"permno": "firm_id"})
+        tables["sp500_rows"] = diagnostics.run(runs, ("pooled", "scratch"), store=store, panel=panel, keep=sp,
+                                               label="diagnostics-sp500-rows")
     with pd.option_context("display.width", 250, "display.max_columns", 40, "display.float_format", "{:.3f}".format):
-        for name, table in tables.items():
-            print(f"\n== {name}\n{table.to_string(index=False)}", flush=True)
+        for scope, group in tables.items():
+            for name, table in group.items():
+                print(f"\n== [{scope}] {name}\n{table.to_string(index=False)}", flush=True)
     return summary, tables
 
 
@@ -337,11 +348,13 @@ def main(argv=None):
         q.add_argument("--device")
         if name == "confirm":
             q.add_argument("--members", type=int, default=3)
+            q.add_argument("--universe", default="sp500")
     args = p.parse_args(argv)
     if args.command == "run":
         run(args.through, seeds=tuple(args.seeds), device=args.device)
     else:
-        confirm(args.through, seeds=tuple(args.seeds), members=args.members, device=args.device)
+        confirm(args.through, seeds=tuple(args.seeds), members=args.members, device=args.device,
+                universe=args.universe)
 
 
 if __name__ == "__main__":

@@ -59,6 +59,21 @@ def test_clustered_ols_recovers_coefficients():
     assert (se > 0).all()
 
 
+def test_run_scores_only_kept_rows(frame, tmp_path, monkeypatch):
+    panel = make_synthetic_panel(n_firms=80, n_meetings=24, seed=0)
+    for table in ("anatomy_table", "grade_table"):  # need real-panel fundamentals
+        monkeypatch.setattr(dg, table, lambda frames: pd.DataFrame())
+    (tmp_path / "tables").mkdir()
+    frame[["meeting", "firm_id", "seed", "fold", "a_hat", "b_hat", "mu", "target"]].to_csv(
+        tmp_path / "tables" / "predictions.csv", index=False)
+    keep = frame.loc[frame["firm_id"] < frame["firm_id"].median(), ["meeting", "firm_id"]].drop_duplicates()
+    full = dg.run({"pooled": tmp_path}, ("pooled",), panel=panel)["mse-split"]
+    part = dg.run({"pooled": tmp_path}, ("pooled",), panel=panel, keep=keep)["mse-split"]
+    sub = frame.merge(keep, on=["meeting", "firm_id"])
+    assert part["total"].iloc[0] == pytest.approx(dg.per_meeting(dg.meeting_parts(sub))["total"].mean())
+    assert part["total"].iloc[0] != pytest.approx(full["total"].iloc[0])
+
+
 def test_shock_table_bins_every_meeting_once(frame):
     shock = frame.groupby("meeting")["s"].first()
     pm = dg.per_meeting(dg.meeting_parts(frame))

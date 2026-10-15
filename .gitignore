@@ -38,8 +38,10 @@ cde/results/*
 
 # WRDS data is licensed: never commit it. Re-pull with python -m fedcore.ingest.wrds pull.
 core/data/raw/wrds/
+core/data/raw/wrds_top1500/
 # Q3 panel built from WRDS data: licensed, rebuilt by fedcore.q3.real.load_real_panel().
 core/data/processed/q3_panel/
+core/data/processed/q3_panel_top1500/
 # yfinance bars keyed by CRSP permno (licensed mapping). Re-pull: python -m fedcore.ingest.yf_firms pull
 core/data/raw/yfinance_firms/
 # 2026 holdout panel (CRSP history + yfinance): licensed inputs.

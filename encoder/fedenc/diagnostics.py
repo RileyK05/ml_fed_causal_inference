@@ -278,14 +278,21 @@ def grade_table(frames: dict) -> pd.DataFrame:
 
 # ----------------------------------------------------------------------------- driver
 
-def run(runs: dict, references=("pooled", "scratch"), store=None, panel=None):
-    """``runs`` maps a display name to a saved run directory. Saves one exploratory run."""
+def run(runs: dict, references=("pooled", "scratch"), store=None, panel=None, keep=None, label="diagnostics"):
+    """``runs`` maps a display name to a saved run directory. Saves one exploratory run.
+
+    ``keep``: optional (meeting, firm_id) frame; only those rows are scored (e.g. the S&P 500
+    members of a broader universe, so scores compare with the S&P-only panel)."""
     if panel is None:
         from fedenc.workflow import bounded_panel
 
         panel, _ = bounded_panel("2009-03-18")
     shock, traits = panel_frames(panel)
     frames = {name: load_predictions(path, shock, traits) for name, path in runs.items()}
+    if keep is not None:
+        keep = keep[["meeting", "firm_id"]].assign(meeting=lambda d: pd.to_datetime(d["meeting"]))
+        frames = {name: df.merge(keep, on=["meeting", "firm_id"], validate="many_to_one")
+                  for name, df in frames.items()}
     meetings = {name: per_meeting(meeting_parts(df)) for name, df in frames.items()}
     tables = {
         "mse-split": mse_table(meetings, references), "mse-by-window": window_table(meetings),
@@ -295,9 +302,10 @@ def run(runs: dict, references=("pooled", "scratch"), store=None, panel=None):
     if store is not None:
         from fedcore.questions import specs
 
-        store.save(specs()["Q3"], "diagnostics", role="exploratory",
+        store.save(specs()["Q3"], label, role="exploratory",
                    params=dict(runs={k: str(v) for k, v in runs.items()}, large_shock=LARGE_SHOCK,
-                               n_boot=N_BOOT, references=list(references)),
+                               n_boot=N_BOOT, references=list(references), rows_kept=None if keep is None
+                               else int(len(keep))),
                    tables=tables, notes="No fitting: computed from saved predictions.")
     return tables
 

@@ -53,15 +53,20 @@ def corpus_audit(corpus, val_frac):
     )
 
 
-def bounded_panel(through):
-    """The real panel through an inclusive historical date; never the 2026 holdout."""
+def bounded_panel(through, universe="sp500", with_rows=False):
+    """The real panel through an inclusive historical date; never the 2026 holdout.
+
+    ``with_rows`` also returns the matching row metadata (meeting, permno, in_sp500, ...)."""
     from fedcore.q3.real import load_real_panel
 
     through = pd.Timestamp(through)
     if pd.isna(through) or through >= pd.Timestamp("2026-01-01"):
         raise ValueError("through must be a historical date before the separate 2026 holdout")
-    panel, _, _ = load_real_panel()
-    return panel.subset(np.flatnonzero(panel.meeting <= through.to_datetime64())), through
+    panel, rows, _ = load_real_panel(universe=universe)
+    keep = np.flatnonzero(panel.meeting <= through.to_datetime64())
+    if with_rows:
+        return panel.subset(keep), through, rows.iloc[keep].reset_index(drop=True)
+    return panel.subset(keep), through
 
 
 def fold_cutoffs(panel, min_train, test_size, val_frac=VAL_FRAC):
