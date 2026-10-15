@@ -16,7 +16,10 @@ Two changes, crossed in a 2 x 2 with the current model as reference:
 Predictions are always a + b x shock against the raw Fed-day return. Batches and evaluation
 chunks always hold whole meetings, which both changes need.
 
+``TwoPartArm`` is the follow-up: pooled's meeting-wide move plus the networks' firm differences.
+
     python -m fedenc.decouple run --seeds 0 1 2 --device cuda      (training: needs the go-ahead)
+    python -m fedenc.decouple confirm --seeds 3 4 5 --device cuda  (training: needs the go-ahead)
 """
 from __future__ import annotations
 
@@ -220,6 +223,49 @@ class DecoupleArm:
         return predict(self.model, panel, self.scaler)
 
 
+class TwoPartArm:
+    """Meeting-wide move from pooled OLS; firm-to-firm differences from ``members`` networks.
+
+    Each network's (a, b) is demeaned within the meeting and averaged over members, then added
+    to pooled's (a, b). So mu's meeting mean is exactly pooled's, and its deviations are the
+    members' average deviations. Run-to-run noise lives almost all in the network's meeting
+    mean (the 2008 crisis), which this drops."""
+
+    def __init__(self, seed=0, *, members=3, centered_a=True, lambda_mean=LAMBDA_CROSS_FIRM, device=None,
+                 max_epochs=40, patience=10):
+        self.seed, self.members = int(seed), int(members)
+        self.net_kwargs = dict(centered_a=centered_a, lambda_mean=lambda_mean, device=device,
+                               max_epochs=max_epochs, patience=patience)
+        self.pooled = self.nets = self.fit_result = None
+
+    def fit(self, panel, seed=None, **_):
+        from fedcore.q3.baselines import PooledOLS
+
+        seed = self.seed if seed is None else int(seed)
+        self.pooled = PooledOLS()
+        self.pooled.fit(panel)
+        self.nets = []
+        for j in range(self.members):
+            net = DecoupleArm(seed * 100 + j, **self.net_kwargs)
+            net.fit(panel)
+            self.nets.append(net)
+        self.fit_result = self.nets[0].fit_result
+
+    def predict(self, panel):
+        if self.nets is None:
+            raise RuntimeError("fit the arm before predict")
+        codes = pd.factorize(pd.DatetimeIndex(panel.meeting))[0]
+
+        def demean(x):
+            return x - pd.Series(x).groupby(codes).transform("mean").to_numpy()
+
+        devs = [tuple(demean(v) for v in net.predict(panel)[1:]) for net in self.nets]
+        _, a0, b0 = self.pooled.predict(panel)
+        a = a0 + np.mean([d[0] for d in devs], axis=0)
+        b = b0 + np.mean([d[1] for d in devs], axis=0)
+        return a + b * np.asarray(panel.shock, dtype=np.float64), a, b
+
+
 def run(through="2009-03-18", seeds=(0, 1, 2), min_train=60, test_size=16, device=None, store=None):
     """2 x 2 (loss x centered a) plus pooled and ridge, then the diagnostics. Training."""
     from fedcore.q3.baselines import BASELINES
@@ -252,15 +298,50 @@ def run(through="2009-03-18", seeds=(0, 1, 2), min_train=60, test_size=16, devic
     return summary, tables
 
 
+def confirm(through="2009-03-18", seeds=(3, 4, 5), members=3, min_train=60, test_size=16, device=None,
+            store=None):
+    """Re-test the two-part model on fresh seeds, with the plain transformer refit alongside. Training."""
+    from fedcore.q3.baselines import BASELINES
+    from fedcore.results import ResultStore
+    from fedenc import diagnostics
+    from fedenc.config import RESULTS
+    from fedenc.daily import _compare_and_save
+    from fedenc.workflow import bounded_panel
+
+    panel, through = bounded_panel(through)
+    store = store or ResultStore(RESULTS)
+    makers = {
+        "tx_scratch": lambda seed: DecoupleArm(seed, device=device),
+        "two_part": lambda seed: TwoPartArm(seed, members=members, device=device),
+        "pooled": BASELINES["pooled"],
+    }
+    summary = _compare_and_save(panel, makers, prefix="twopart-confirm",
+                                params=dict(through=str(through.date()), lambda_mean=LAMBDA_CROSS_FIRM,
+                                            members=members),
+                                min_train=min_train, test_size=test_size, seeds=seeds, store=store)
+    runs = {arm.removeprefix("tx_"): Path(path) for arm, path in zip(summary["arm"], summary["path"])}
+    tables = diagnostics.run(runs, ("pooled", "scratch"), store=store, panel=panel)
+    with pd.option_context("display.width", 250, "display.max_columns", 40, "display.float_format", "{:.3f}".format):
+        for name, table in tables.items():
+            print(f"\n== {name}\n{table.to_string(index=False)}", flush=True)
+    return summary, tables
+
+
 def main(argv=None):
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = p.add_subparsers(dest="command", required=True)
-    q = sub.add_parser("run")
-    q.add_argument("--through", default="2009-03-18")
-    q.add_argument("--seeds", type=int, nargs="+", default=[0, 1, 2])
-    q.add_argument("--device")
+    for name, seeds in (("run", [0, 1, 2]), ("confirm", [3, 4, 5])):
+        q = sub.add_parser(name)
+        q.add_argument("--through", default="2009-03-18")
+        q.add_argument("--seeds", type=int, nargs="+", default=seeds)
+        q.add_argument("--device")
+        if name == "confirm":
+            q.add_argument("--members", type=int, default=3)
     args = p.parse_args(argv)
-    run(args.through, seeds=tuple(args.seeds), device=args.device)
+    if args.command == "run":
+        run(args.through, seeds=tuple(args.seeds), device=args.device)
+    else:
+        confirm(args.through, seeds=tuple(args.seeds), members=args.members, device=args.device)
 
 
 if __name__ == "__main__":

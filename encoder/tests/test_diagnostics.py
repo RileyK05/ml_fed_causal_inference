@@ -57,3 +57,12 @@ def test_clustered_ols_recovers_coefficients():
     coef, se = dg.ols_clustered(X, y, np.repeat(np.arange(40), 10))
     np.testing.assert_allclose(coef, [2.0, -1.0], atol=0.01)
     assert (se > 0).all()
+
+
+def test_shock_table_bins_every_meeting_once(frame):
+    shock = frame.groupby("meeting")["s"].first()
+    pm = dg.per_meeting(dg.meeting_parts(frame))
+    table = dg.shock_table({"pooled": pm, "model": pm}, shock)
+    model = table[table.model == "model"]
+    assert model["meetings"].sum() == len(pm)
+    assert model["share_of_error"].sum() == pytest.approx(1.0)

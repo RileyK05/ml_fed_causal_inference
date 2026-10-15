@@ -69,6 +69,26 @@ def test_decouple_arm_smoke(panel, monkeypatch, centered_a, lambda_mean):
     assert 1 <= arm.fit_result.best_epoch <= 2
 
 
+def test_two_part_keeps_pooled_meeting_mean_and_network_deviations(panel, monkeypatch):
+    import pandas as pd
+    from fedcore.q3.baselines import PooledOLS
+
+    monkeypatch.setattr(dc, "PatchTransformerEncoder", lambda: tiny_encoder())
+    arm = dc.TwoPartArm(0, members=2, device="cpu", max_epochs=2, patience=1)
+    arm.fit(panel)
+    mu, a, b = arm.predict(panel)
+    np.testing.assert_allclose(mu, a + b * panel.shock, atol=1e-9)
+    pooled = PooledOLS()
+    pooled.fit(panel)
+    meeting = pd.DatetimeIndex(panel.meeting)
+    np.testing.assert_allclose(pd.Series(mu).groupby(meeting).mean().to_numpy(),
+                               pd.Series(pooled.predict(panel)[0]).groupby(meeting).mean().to_numpy(), atol=1e-9)
+    nets = [n.predict(panel)[0] for n in arm.nets]
+    dev = np.mean([m - pd.Series(m).groupby(meeting).transform("mean").to_numpy() for m in nets], axis=0)
+    np.testing.assert_allclose(mu - pd.Series(mu).groupby(meeting).transform("mean").to_numpy(), dev, atol=1e-6)
+    assert [n.seed for n in arm.nets] == [0, 1]
+
+
 def test_reference_objective_is_the_shared_meeting_mse(panel):
     from fedcore.q3 import ResponseModel
     from fedcore.q3.train import _eval_loss

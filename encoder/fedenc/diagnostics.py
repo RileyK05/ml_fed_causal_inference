@@ -123,6 +123,34 @@ def window_table(meetings: dict) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
+SHOCK_BINS = (0.0, 0.1, 0.25, 0.5, np.inf)  # |s| in 10bp units: <1bp, 1-2.5bp, 2.5-5bp, >=5bp
+SHOCK_LABELS = ("tiny <1bp", "small 1-2.5bp", "medium 2.5-5bp", "large >=5bp")
+
+
+def shock_table(meetings: dict, shock, reference="pooled") -> pd.DataFrame:
+    """Error by surprise size: b's cross-firm effect scales with s^2, so large surprises are
+    where a real b should show. Paired ranges against ``reference`` within each bin."""
+    rows = []
+    for name, pm in meetings.items():
+        size = pd.cut(pm.index.map(shock).to_numpy().__abs__(), SHOCK_BINS, labels=SHOCK_LABELS, right=False)
+        for label in SHOCK_LABELS:
+            idx = pm.index[size == label]
+            if not len(idx):
+                continue
+            g = pm.loc[idx]
+            row = {"model": name, "surprise": label, "meetings": len(idx),
+                   "crisis_meetings": int((g.fold == CRISIS_FOLD).sum()), "total": g["total"].mean(),
+                   "mean_part": g["mean_part"].mean(), "cs": g["cs"].mean(),
+                   "share_of_error": g["total"].sum() / pm["total"].sum()}
+            if reference in meetings and name != reference:
+                ref = meetings[reference].loc[idx]
+                for part in ("total", "cs"):
+                    est, lo, hi = paired_range(g[part], ref[part])
+                    row[f"{part}_vs_{reference}"] = f"{est:+.3f} ({lo:+.3f}, {hi:+.3f})"
+            rows.append(row)
+    return pd.DataFrame(rows)
+
+
 # ----------------------------------------------------------------------------- 2-3. anatomy
 
 def _within_corr(df, x, y, method="pearson"):
@@ -261,6 +289,7 @@ def run(runs: dict, references=("pooled", "scratch"), store=None, panel=None):
     meetings = {name: per_meeting(meeting_parts(df)) for name, df in frames.items()}
     tables = {
         "mse-split": mse_table(meetings, references), "mse-by-window": window_table(meetings),
+        "mse-by-surprise": shock_table(meetings, shock, references[0]),
         "anatomy": anatomy_table(frames), "b-grades": grade_table(frames),
     }
     if store is not None:
