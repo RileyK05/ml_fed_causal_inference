@@ -314,7 +314,7 @@ def run(through="2009-03-18", seeds=(0, 1, 2), min_train=60, test_size=16, devic
 
 
 def confirm(through="2009-03-18", seeds=(3, 4, 5), members=3, min_train=60, test_size=16, device=None,
-            store=None, universe="sp500", sector=False, target="raw", scratch=True):
+            store=None, universe="sp500", sector=False, target="raw", scratch=True, shock="STMT"):
     """Re-test the two-part model on fresh seeds, with the plain transformer refit alongside. Training.
 
     With a broader ``universe`` the arms train on every row; diagnostics run on all rows and
@@ -322,7 +322,8 @@ def confirm(through="2009-03-18", seeds=(3, 4, 5), members=3, min_train=60, test
     adds a ``two_part_sector`` arm that also sees GICS sector one-hot columns (``two_part`` keeps
     the original fundamentals). ``target="market_adjusted"`` fits every arm, pooled included, to
     the abnormal return (see ``workflow.market_adjusted``). ``scratch=False`` skips the plain
-    transformer."""
+    transformer. ``shock="ME"`` uses the whole monetary event surprise (statement plus press
+    conference) instead of the statement window."""
     from fedcore.q3.baselines import BASELINES
     from fedcore.q3.real import FUNDAMENTAL_NAMES, UNIVERSES
     from fedcore.results import ResultStore
@@ -331,7 +332,8 @@ def confirm(through="2009-03-18", seeds=(3, 4, 5), members=3, min_train=60, test
     from fedenc.daily import _compare_and_save
     from fedenc.workflow import bounded_panel
 
-    panel, through, rows = bounded_panel(through, universe=universe, with_rows=True, sector=sector, target=target)
+    panel, through, rows = bounded_panel(through, universe=universe, with_rows=True, sector=sector, target=target,
+                                         shock=shock)
     store = store or ResultStore(RESULTS)
     base_cols = len(FUNDAMENTAL_NAMES)
     makers = {"tx_scratch": lambda seed: DecoupleArm(seed, device=device, fund_cols=base_cols)} if scratch else {}
@@ -343,9 +345,11 @@ def confirm(through="2009-03-18", seeds=(3, 4, 5), members=3, min_train=60, test
     if pd.Timestamp(through) != pd.Timestamp("2009-03-18"):
         prefix += f"-to{through.year}"
     prefix += "-adj" if target == "market_adjusted" else ""
+    prefix += f"-{shock.lower()}" if shock != "STMT" else ""
     summary = _compare_and_save(panel, makers, prefix=prefix,
                                 params=dict(through=str(through.date()), lambda_mean=LAMBDA_CROSS_FIRM,
-                                            members=members, universe=universe, sector=sector, target=target),
+                                            members=members, universe=universe, sector=sector, target=target,
+                                            shock=shock),
                                 min_train=min_train, test_size=test_size, seeds=seeds, store=store,
                                 datasets=UNIVERSES[universe].inputs)
     runs = {arm.removeprefix("tx_"): Path(path) for arm, path in zip(summary["arm"], summary["path"])}
@@ -423,6 +427,7 @@ def main(argv=None):
             q.add_argument("--target", default="raw", choices=("raw", "market_adjusted"))
             q.add_argument("--test-size", type=int, default=16, help="meetings per test window")
             q.add_argument("--no-scratch", action="store_true", help="skip the plain transformer arm")
+            q.add_argument("--shock", default="STMT", choices=("STMT", "ME"))
     q = sub.add_parser("final", help="the one confirmatory test on 2022-2025 (run once)")
     q.add_argument("--seeds", type=int, nargs="+", default=[6, 7, 8])
     q.add_argument("--members", type=int, default=3)
@@ -435,7 +440,7 @@ def main(argv=None):
     else:
         confirm(args.through, seeds=tuple(args.seeds), members=args.members, device=args.device,
                 universe=args.universe, sector=args.sector, target=args.target, test_size=args.test_size,
-                scratch=not args.no_scratch)
+                scratch=not args.no_scratch, shock=args.shock)
 
 
 if __name__ == "__main__":

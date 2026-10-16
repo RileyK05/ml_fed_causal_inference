@@ -102,15 +102,43 @@ def market_adjusted(panel, market=None):
     return out
 
 
+SHOCKS = ("STMT", "ME")
+
+
+def with_shock(panel, measure, surprises=None):
+    """Replace the shock with ``10 x`` another USMPD surprise measure.
+
+    ``STMT`` is the statement window (the panel's default). ``ME`` is the whole monetary event,
+    statement plus press conference; from 2011, when press conferences began, it also carries
+    the news released at the press conference.
+    """
+    import dataclasses
+
+    if measure not in SHOCKS:
+        raise ValueError(f"shock must be one of {SHOCKS}")
+    if surprises is None:
+        from fedcore.data import load
+
+        mps = load("mps_surprises")
+        surprises = pd.Series(mps[measure].to_numpy(dtype=np.float64), index=pd.to_datetime(mps["Date"]))
+    s = 10.0 * surprises.groupby(level=0).first().reindex(pd.DatetimeIndex(panel.meeting)).to_numpy()
+    if np.isnan(s).any():
+        raise ValueError(f"some meetings have no {measure} surprise")
+    out = dataclasses.replace(panel, shock=s.astype(np.float32))
+    out.validate()
+    return out
+
+
 TARGETS = ("raw", "market_adjusted")
 
 
-def bounded_panel(through, universe="sp500", with_rows=False, sector=False, target="raw"):
+def bounded_panel(through, universe="sp500", with_rows=False, sector=False, target="raw", shock="STMT"):
     """The real panel through an inclusive historical date; never the 2026 holdout.
 
     ``with_rows`` also returns the matching row metadata (meeting, permno, in_sp500, ...).
     ``sector`` appends GICS sector one-hot columns to the fundamentals (see ``with_sector``).
-    ``target="market_adjusted"`` swaps in the abnormal return (see ``market_adjusted``)."""
+    ``target="market_adjusted"`` swaps in the abnormal return (see ``market_adjusted``).
+    ``shock="ME"`` uses the whole monetary event surprise (see ``with_shock``)."""
     from fedcore.q3.real import load_real_panel
 
     if target not in TARGETS:
@@ -123,6 +151,8 @@ def bounded_panel(through, universe="sp500", with_rows=False, sector=False, targ
         panel = with_sector(panel, rows)
     keep = np.flatnonzero(panel.meeting <= through.to_datetime64())
     panel = panel.subset(keep)
+    if shock != "STMT":
+        panel = with_shock(panel, shock)
     if target == "market_adjusted":
         panel = market_adjusted(panel)
     if with_rows:

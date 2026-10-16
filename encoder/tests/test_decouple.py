@@ -134,6 +134,22 @@ def test_market_adjusted_target_removes_beta_times_market(panel):
         market_adjusted(p, market.iloc[1:])
 
 
+def test_with_shock_swaps_in_ten_times_the_measure(panel):
+    import pandas as pd
+    from fedenc.workflow import with_shock
+
+    days = pd.DatetimeIndex(np.unique(panel.meeting))
+    surprises = pd.Series(np.arange(days.size) / 100.0, index=days)
+    out = with_shock(panel, "ME", surprises)
+    expect = 10.0 * surprises.reindex(pd.DatetimeIndex(panel.meeting)).to_numpy()
+    np.testing.assert_allclose(out.shock, expect, rtol=1e-6)
+    np.testing.assert_array_equal(out.target, panel.target)
+    with pytest.raises(ValueError):
+        with_shock(panel, "ME", surprises.iloc[1:])
+    with pytest.raises(ValueError):
+        with_shock(panel, "PC", surprises)
+
+
 def test_fund_view_keeps_the_first_columns(panel, monkeypatch):
     k = panel.fundamentals.shape[1]
     view = dc.fund_view(panel, 2)
