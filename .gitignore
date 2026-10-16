@@ -46,3 +46,6 @@ core/data/processed/q3_panel_top1500/
 core/data/raw/yfinance_firms/
 # 2026 holdout panel (CRSP history + yfinance): licensed inputs.
 core/data/processed/q3_holdout/
+
+# Local vast.ai helper scripts (host-specific; they move licensed WRDS data). Never commit.
+vast_*.sh
