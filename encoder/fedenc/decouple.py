@@ -287,7 +287,7 @@ def run(through="2009-03-18", seeds=(0, 1, 2), min_train=60, test_size=16, devic
     from fedcore.results import ResultStore
     from fedenc import diagnostics
     from fedenc.config import RESULTS
-    from fedenc.daily import _compare_and_save
+    from fedenc.runs import save_runs
     from fedenc.workflow import bounded_panel
 
     panel, through = bounded_panel(through)
@@ -302,7 +302,7 @@ def run(through="2009-03-18", seeds=(0, 1, 2), min_train=60, test_size=16, devic
         "pooled": BASELINES["pooled"],
         "ridge_interact": BASELINES["ridge_interact"],
     }
-    summary = _compare_and_save(panel, makers, prefix="decouple-exp",
+    summary = save_runs(panel, makers, prefix="decouple-exp",
                                 params=dict(through=str(through.date()), lambda_mean=lam),
                                 min_train=min_train, test_size=test_size, seeds=seeds, store=store)
     runs = {arm.removeprefix("tx_"): Path(path) for arm, path in zip(summary["arm"], summary["path"])}
@@ -333,7 +333,7 @@ def confirm(through="2009-03-18", seeds=(3, 4, 5), members=3, min_train=60, test
     from fedcore.results import ResultStore
     from fedenc import diagnostics
     from fedenc.config import RESULTS
-    from fedenc.daily import _compare_and_save
+    from fedenc.runs import save_runs
     from fedenc.workflow import bounded_panel
 
     panel, through, rows = bounded_panel(through, universe=universe, with_rows=True, sector=sector, target=target,
@@ -351,7 +351,7 @@ def confirm(through="2009-03-18", seeds=(3, 4, 5), members=3, min_train=60, test
         prefix += f"-to{through.year}"
     prefix += "-adj" if target == "market_adjusted" else ""
     prefix += f"-{shock.lower()}" if shock != "STMT" else ""
-    summary = _compare_and_save(panel, makers, prefix=prefix,
+    summary = save_runs(panel, makers, prefix=prefix,
                                 params=dict(through=str(through.date()), lambda_mean=LAMBDA_CROSS_FIRM,
                                             members=members, universe=universe, sector=sector, target=target,
                                             shock=shock),
@@ -388,7 +388,7 @@ def final(seeds=(6, 7, 8), members=3, device=None, store=None):
     from fedcore.results import ResultStore
     from fedenc import diagnostics
     from fedenc.config import RESULTS
-    from fedenc.daily import _compare_and_save
+    from fedenc.runs import save_runs
     from fedenc.workflow import bounded_panel
 
     panel, through = bounded_panel(FINAL_END)
@@ -403,7 +403,7 @@ def final(seeds=(6, 7, 8), members=3, device=None, store=None):
     store = store or ResultStore(RESULTS)
     makers = {"two_part": lambda seed: TwoPartArm(seed, members=members, device=device),
               "pooled": BASELINES["pooled"]}
-    summary = _compare_and_save(panel, makers, prefix="q3-final", role="primary",
+    summary = save_runs(panel, makers, prefix="q3-final", role="primary",
                                 params=dict(through=str(through.date()), dev_end=str(DEV_END.date()),
                                             lambda_mean=LAMBDA_CROSS_FIRM, members=members, universe="sp500",
                                             target="raw", locked_spec="two_part"),
