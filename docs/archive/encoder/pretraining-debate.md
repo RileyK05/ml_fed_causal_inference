@@ -1,5 +1,7 @@
 # The pre-training debate
 
+> Archived 2026-10-16: the code this describes was removed; see git tag `q3-pretraining-archive` and [encoder-report.md](../../reports/encoder-report.md).
+
 A record of the back-and-forth on how to pre-train the Q3 encoder, written up on 2026-10-12. Nothing in this
 doc has been built or run. It's the argument so far: proposals, counters, concessions, and what is
 still open. Each round is labelled with who raised it.
@@ -25,7 +27,7 @@ Three facts drive the whole debate:
 1. **There are only 253 Fed meetings.** Every firm in a meeting sees the same s, so for learning b the
    effective sample is closer to 253 than to the 127k firm-meeting rows.
 2. **The signal is small next to the noise.** The median surprise is 1.4bp (s ≈ 0.14), and the
-   90th percentile is 4.8bp (see [cheap-test-menu.md](cheap-test-menu.md)). With b near −1, b·s is
+   90th percentile is 4.8bp (see [cheap-test-menu.md](../../encoder/cheap-test-menu.md)). With b near −1, b·s is
    a few tenths of a percent at most, against roughly 2.4pp of ordinary daily noise. *(An earlier
    draft said "typically 3–5bp", which was too high.)*
 3. **So pre-training exists to give the encoder a head start.** It runs on a large pool of non-Fed data

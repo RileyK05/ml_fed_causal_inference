@@ -1,5 +1,7 @@
 # Pretraining status (2026-10-13)
 
+> Archived 2026-10-16: the code this describes was removed; see git tag `q3-pretraining-archive` and [encoder-report.md](../../reports/encoder-report.md).
+
 Handoff for a fresh session. Full debate history: `pretraining-debate.md`. Test list: `cheap-test-menu.md`.
 Cheap-test results: `encoder/results/q3_susceptibility/*cheap-*` (all 32 ran, exploratory).
 

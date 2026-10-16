@@ -1,5 +1,10 @@
 # Package 01: patch-transformer history encoder
 
+> **Status (2026-10-16): complete and superseded.** The encoder was built; the pretraining and
+> transfer arms described below were tested and removed (git tag `q3-pretraining-archive`).
+> What remains is the two-part model in `fedenc.decouple`, scored once on 2022-2025. Results
+> and what next: [encoder-report.md](../reports/encoder-report.md).
+
 > **NO TRAINING without the user's explicit go-ahead in chat.** Build code and unit tests only.
 > Allowed: one smoke fit (1-2 epochs, tiny synthetic panel, under a minute) inside a test,
 > never saved to `results/`. Not allowed: pre-training, `run_arms`, benchmarks, multi-seed

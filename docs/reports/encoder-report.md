@@ -266,7 +266,7 @@ Ordered by value for effort.
 | ~~1~~ | ~~Multi-day pre-check on CPU~~ **Done 2026-10-16: flat** (section 3.4). Q3 is closed at the one-day horizon, and a longer target horizon is not justified | | |
 | ~~2~~ | ~~Add the CAPM baseline to the shared evaluator~~ **Done 2026-10-16**: `BASELINES["capm_pooled"]` (`CAPMPooled` in `core/fedcore/q3/baselines.py`), first reference in `run_arms` tables and in `decouple.confirm`. Reproduces the final-test CAPM score exactly (5.725) | | |
 | ~~3~~ | ~~Write the Q3 result into the spec docs~~ **Done 2026-10-16**: result paragraph in `docs/question.md` Q3, outcome note in `docs/methods.md` | | |
-| 4 | **Clean up the code** | Delete the first-trial pretraining machinery (`pretrain_return.py`, `return_corpus.py`, `checkpoint.py`, staged fine-tuning in `train.py`, `pretrain-folds` in `workflow.py`). Keep `decouple.py`, `diagnostics.py` and the `workflow.py` panel options | A few hours; tests guard it |
+| ~~4~~ | ~~Clean up the code~~ **Done 2026-10-16**: pretraining machinery deleted (tag `q3-pretraining-archive`); `daily._compare_and_save` moved to `runs.save_runs`; pretraining docs moved to `docs/archive/encoder/` | | |
 | 5 | **Score the locked model and the CAPM baseline once on the 2026 holdout**, and report 2022-2026 pooled (about 38 meetings) | Completes the record; it won't change the conclusion on its own | About $0.10 GPU; needs the user's go-ahead |
 | 6 | **Settle the winner rule** in `question.md` | Only matters if a future b model is tried; it should name the CAPM baseline as the reference | Decision |
 
@@ -299,14 +299,21 @@ bottleneck); point-in-time GSS factors (no signal even with the full-sample vers
 | `decouple.py` | `StructModel` (centered a), `DecoupleArm`, `TwoPartArm`; commands `run`, `confirm`, `final` |
 | `diagnostics.py` | MSE split, window and surprise tables, a/b anatomy, b grades; `keep=` scores a row subset |
 | `workflow.py` | `bounded_panel` with `universe`, `sector`, `target` (`market_adjusted`), `shock` (`ME`) |
-| `daily.py` | Ordinary-day pretraining, inputs experiment, shared run saving |
+| `runs.py` | `save_runs` (fit arms on shared folds, save each run) and `b_grade` |
 | `core/fedcore/q3/baselines.py` | `CAPMPooled` (`capm_pooled`): the CAPM baseline, first reference in Q3 tables |
 | `core/fedcore/q3/real.py` | Panel builder; `UNIVERSES` (`sp500`, `top1500`) |
 | `core/fedcore/ingest/wrds.py` | WRDS pulls; `--universe top1500`, `--resume`, credit and funding tables |
 
 **Commits:** b634f2d, 599f8ef, 5013427, 1bf92a5, d11951d (diagnostics, decoupling), 3d2c107
 (two-part model), 5adc317 (top 1,500), c50304a (credit pull, sector), b673d60 (market-adjusted
-target, longer windows), 2dcc6a2 (final test), dc8f7d4 (ME shock).
+target, longer windows), 2dcc6a2 (final test), dc8f7d4 (ME shock), 6b21ecd (CAPM baseline, this
+report).
+
+**Removed code:** the pretraining machinery (masked-patch and next-return pretraining,
+checkpoints, `TxArm` and staged fine-tuning, the ordinary-day arm `daily.py`, the inputs
+experiment) was deleted on 2026-10-16 after the final test. Runs it produced stay in
+`encoder/results/`; the code is at git tag `q3-pretraining-archive` (`git checkout
+q3-pretraining-archive -- encoder/fedenc` to rerun them).
 
 **Runs** (`encoder/results/q3_susceptibility/`, gitignored):
 

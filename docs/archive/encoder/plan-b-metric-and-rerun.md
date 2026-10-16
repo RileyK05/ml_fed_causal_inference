@@ -1,5 +1,7 @@
 # Plan: grade b directly, then rerun the pretraining comparison
 
+> Archived 2026-10-16: the code this describes was removed; see git tag `q3-pretraining-archive` and [encoder-report.md](../../reports/encoder-report.md).
+
 Written 2026-10-14 for an implementation session. Code and unit tests only: **no training,
 no `run_arms`, no pretraining, nothing that saves a run.** The user launches the GPU run.
 Read `AGENTS.md`, `docs/encoder/next-return-pretraining.md` and

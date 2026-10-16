@@ -1,27 +1,39 @@
-# encoder: patch-transformer Q3 model (`fedenc`)
+# encoder: Q3 two-part patch-transformer model (`fedenc`)
 
-Reads each firm's last 252 trading days as 51 weekly patches (BERT-style), fuses fundamentals
-and market context into a firm state z, and predicts the meeting-day move as a(z) + b(z)·S.
-b(z) is the firm's Fed sensitivity.
+Predicts each firm's Fed-day return as `mu = a(z) + b(z) x shock`, where z is the firm's last
+252 trading days (51 weekly patches through a small transformer) fused with fundamentals and
+meeting context. The locked model (`TwoPartArm`) takes the meeting-wide move from pooled OLS and
+the firm-to-firm differences from an average of centered-a networks.
 
-Pretraining predicts the **next ordinary trading day's raw return** from history: its
-expected value m and variance v, scored with `log(v) + (r_next - m)²/v`. Transfer retains the encoder and its history scaler,
-then trains the existing Fed response heads. A dated masked-reconstruction comparator
-is available. [Setup, chronology, commands and artifact format](../docs/encoder/next-return-pretraining.md).
+**Status (2026-10-16):** final test done. The two-part model ties the CAPM baseline
+(`capm_pooled`) on 2022-2025; b beyond beta is not detectable. Full record:
+[encoder-report.md](../docs/reports/encoder-report.md). The earlier pretraining code
+(masked-patch and next-return pretraining, checkpoints, staged fine-tuning) was removed; it is
+at git tag `q3-pretraining-archive`, its docs in `docs/archive/encoder/`.
+
+| Module | What |
+|---|---|
+| `decouple.py` | `StructModel` (centered a), `DecoupleArm`, `TwoPartArm`; commands `run`, `confirm`, `final` |
+| `diagnostics.py` | MSE split, window and surprise tables, a/b anatomy, b grades, from saved predictions |
+| `workflow.py` | `bounded_panel` and its variants: `universe`, `sector`, `target="market_adjusted"`, `shock="ME"` |
+| `runs.py` | `save_runs` (fit arms on shared folds, save one run per arm) and `b_grade` |
+| `encoder_transformer.py` | `PatchTransformerEncoder` |
+| `cheap.py`, `cheap_gradients.py` | Cheap premise tests (`docs/encoder/cheap-test-menu.md`) |
 
 ```powershell
-# No data loading or training:
-.venv\Scripts\python -m fedenc.workflow plan --cutoff 2000-10-03
+# No fitting: re-score saved runs (add --no-save to print only)
+.venv\Scripts\python -m fedenc.diagnostics --no-save two_part=<run dir> pooled=<run dir> --reference pooled
+# Training: needs the user's go-ahead in chat
+.venv\Scripts\python -m fedenc.decouple confirm --through 2021-12-31 --test-size 32 --device cuda
 ```
 
-Training is a separate explicit command and still needs the user's go-ahead in chat.
-Pretrained arms load an explicit checkpoint; they never start pretraining automatically.
+`decouple final` is the one-shot 2022-2025 test; it has been run and must not be rerun or tuned on.
 
 ```text
 encoder/
   fedenc/           the package (imports fedcore only)
   tests/
-  results/          this project's saved runs
+  results/          this project's saved runs (gitignored, append-only)
 ```
 
 ```powershell

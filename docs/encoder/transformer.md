@@ -1,7 +1,7 @@
 # Q3 Transformer Design Note
 
 **Version:** 0.1 (2026-09-25)  
-**Status:** Research design and implementation options; no trained model or empirical result yet.  
+**Status:** Research design and implementation options, written before any training. Outcome (2026-10-16): the encoder was built; pretraining did not help and was removed; the two-part model ties a CAPM baseline in the final test. See [encoder-report.md](../reports/encoder-report.md).  
 **Parent specification:** [question.md](../question.md), Q-spec v1.1.  
 **Other methods:** [methods.md](../methods.md).
 

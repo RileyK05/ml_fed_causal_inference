@@ -1,5 +1,7 @@
 # Q3: Two proposals for the next experiments
 
+> Archived 2026-10-16: the code this describes was removed; see git tag `q3-pretraining-archive` and [encoder-report.md](../../reports/encoder-report.md).
+
 Date: 2026-10-14. Status: proposals for discussion, not an adopted specification or authorization to train.
 
 ## What the latest results show
@@ -16,7 +18,7 @@ The ordinary-day pretrained model has slightly worse MSE and slightly better Ran
 
 The saved comparison omits the paired interval for daily pretraining versus scratch. The pooled-minus-scratch MSE interval includes zero. Treat these results as exploratory, without claiming equivalence or a clear transformer advantage over pooled prediction.
 
-Sources: [comparison table](../../encoder/results/q3_susceptibility/20261015-031300_daily-exp-comparison/tables/comparison.csv), [daily-pretraining manifest](../../encoder/results/q3_susceptibility/20261015-030832_daily-exp-tx-daily/manifest.json), and [implementation](../../encoder/fedenc/daily.py).
+Sources: [comparison table](../../../encoder/results/q3_susceptibility/20261015-031300_daily-exp-comparison/tables/comparison.csv), [daily-pretraining manifest](../../../encoder/results/q3_susceptibility/20261015-030832_daily-exp-tx-daily/manifest.json), and the implementation (`encoder/fedenc/daily.py` at tag `q3-pretraining-archive`).
 
 ## Proposal 1: Regularize firm-specific shock sensitivity
 
@@ -42,7 +44,7 @@ The penalty is what changes the model; writing `b(z) = b0 + delta_b(z)` alone do
 - The earlier C1 ridge comparison scored 8.910 MSE with a common shock loading versus 9.688 with state-dependent loadings, across 48 development test meetings. Its paired interval for the increase was [0.099, 1.607].
 - These results make estimation noise a plausible bottleneck. They do not prove that nonlinear sensitivity differences are absent.
 
-Source: [C1 comparison](../../encoder/results/q3_susceptibility/20261013-223729_cheap-c1/tables/comparisons.csv).
+Source: [C1 comparison](../../../encoder/results/q3_susceptibility/20261013-223729_cheap-c1/tables/comparisons.csv).
 
 ### Experiment
 
@@ -76,7 +78,7 @@ R6 found an association between past earnings-reaction magnitude and the magnitu
 
 This is exploratory association within the development sample, not a demonstrated out-of-sample gain or evidence about the direction of Fed sensitivity.
 
-Source: [R6 manifest](../../encoder/results/q3_susceptibility/20261013-224003_cheap-r6/manifest.json).
+Source: [R6 manifest](../../../encoder/results/q3_susceptibility/20261013-224003_cheap-r6/manifest.json).
 
 ### Feature definition
 

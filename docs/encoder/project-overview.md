@@ -4,13 +4,17 @@ Written 2026-10-15. Covers the work through the inputs experiment that day. Ever
 is **exploratory** and uses the development period only (meetings through 2009-03-18). No
 model has been selected, and nothing has touched the 2010-2025 outer test or the 2026 holdout.
 
+> Note (2026-10-16): the pretraining sections describe code that has since been removed (git
+> tag `q3-pretraining-archive`); the docs it links are in `docs/archive/encoder/`. Later results
+> are in [encoder-report.md](../reports/encoder-report.md).
+
 Other docs: spec in [question.md](../question.md) (Q3 section), design menu in
 [transformer.md](transformer.md), pretraining setup in
-[next-return-pretraining.md](next-return-pretraining.md), running log in
-[pretraining-status.md](pretraining-status.md), cheap tests in
+[next-return-pretraining.md](../archive/encoder/next-return-pretraining.md), running log in
+[pretraining-status.md](../archive/encoder/pretraining-status.md), cheap tests in
 [cheap-test-menu.md](cheap-test-menu.md), proposals not yet adopted in
-[plan-b-metric-and-rerun.md](plan-b-metric-and-rerun.md) and
-[next-experiment-proposals.md](next-experiment-proposals.md).
+[plan-b-metric-and-rerun.md](../archive/encoder/plan-b-metric-and-rerun.md) and
+[next-experiment-proposals.md](../archive/encoder/next-experiment-proposals.md).
 
 ---
 
@@ -146,7 +150,7 @@ days was therefore dropped.
 
 ### 5.2 Choosing a pretraining task
 
-After a long debate ([pretraining-debate.md](pretraining-debate.md)), the agreed plan was the
+After a long debate ([pretraining-debate.md](../archive/encoder/pretraining-debate.md)), the agreed plan was the
 user's original one: on ordinary days, predict the firm's next-day return from its history,
 **with no shock**, then train a and b on Fed days. Putting a shock (market or rate move) into
 pretraining was rejected: it turns pretraining into response learning, and with the market as

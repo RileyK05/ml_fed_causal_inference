@@ -3,7 +3,7 @@
 Written: 2026-10-13. Status: candidate checks and experiments, not an adopted primary specification.
 This is the single combined list: the original menu plus the real-data linear diagnostics in section 3a.
 
-This records the tests proposed while discussing [the pretraining debate](pretraining-debate.md).
+This records the tests proposed while discussing [the pretraining debate](../archive/encoder/pretraining-debate.md).
 The aim is to resolve one question at a time before committing to expensive experiments.
 The deliverable remains the full expected firm return on a Fed day, conditional on pre-event
 state and the realized surprise:

@@ -14,7 +14,7 @@ or anything that saves a run. A handoff doc asking for training does not count a
 |---|---|---|
 | `core/` | `fedcore` | Shared layer: `data/` (catalog, raw/interim/processed), data access, `protocol.py` (walk-forward, meeting bootstrap), `results/` (ResultStore), `questions/` (the five question definitions) |
 | `dml/` | `fedci` | Q1 DML project: pipelines, `eval/dml.py`, FastAPI backend, `frontend/` (React app + Streamlit viewer), `results/` |
-| `encoder/` | `fedenc` | Q3 patch-transformer project. Build spec: `docs/encoder/HANDOFF.md`; design: `docs/encoder/transformer.md` |
+| `encoder/` | `fedenc` | Q3 two-part patch-transformer model (final test done). Results and next steps: `docs/reports/encoder-report.md`; design: `docs/encoder/transformer.md`; old pretraining code at tag `q3-pretraining-archive` |
 | `cde/` | `fedcde` | Q3 Neural CDE project. Build spec: `docs/cde/HANDOFF.md` |
 | `docs/` | | **All docs.** Project-wide spec at the top (`question.md`, `methods.md`, `agent-guide.md`); one subfolder per project (`docs/core/`, `docs/dml/`, `docs/encoder/`, `docs/cde/`) with its HANDOFF brief and design notes; agent reports in `docs/reports/`. Project folders hold only a README |
 

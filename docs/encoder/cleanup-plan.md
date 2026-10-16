@@ -1,6 +1,6 @@
 # Plan: clean up the Q3 encoder code after the final test
 
-Written 2026-10-16, branch `cleanup/q3-encoder`. Code and tests only: **no training, no
+Written 2026-10-16, branch `cleanup/q3-encoder`. **Done 2026-10-16** (outcome at the end). Code and tests only: **no training, no
 `run_arms`, nothing that saves a run.** Read `AGENTS.md` and
 [encoder-report.md](../reports/encoder-report.md) first.
 
@@ -91,3 +91,19 @@ predictions, with no refitting.
 ## Out of scope
 
 Changing any model, retraining, the 2026 holdout, the winner rule, and the CDE project.
+
+## Outcome (2026-10-16)
+
+Done as planned, with two deviations:
+
+- `b_grade` moved to `runs.py` with `save_runs` instead of being dropped: it writes the
+  `b_slope` / `b_t` metrics every saved run carries, and differs from `diagnostics.b_grades`.
+  Its test moved to `test_runs.py`.
+- `decouple.final` changed by one import line (`fedenc.runs.save_runs` instead of
+  `fedenc.daily._compare_and_save`); same function, same behaviour.
+
+Verification: `fedcore check` 36/36; `pytest` core 88 (was 91: three pretraining-helper tests),
+dml 29, encoder 37 (was 76: +2 in `test_runs.py`, -6 `test_daily.py`, -27
+`test_return_pretrain.py`, -8 pretraining/`TxArm` tests in `test_encoder.py`), cde 21. Saved
+predictions re-score to the report's numbers: final 5.723 vs 5.768 (-0.045), development to 2021
+5.927 vs 5.954. Nothing under `core/data/` or `encoder/results/` changed.

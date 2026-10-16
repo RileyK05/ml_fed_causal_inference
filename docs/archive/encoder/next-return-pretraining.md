@@ -1,5 +1,7 @@
 # Encoder setup: next-day return pretraining
 
+> Archived 2026-10-16: the code this describes was removed; see git tag `q3-pretraining-archive` and [encoder-report.md](../../reports/encoder-report.md).
+
 Implemented 2026-10-14. This is the selected engineering setup, not an empirical result or
 an authorization to train. Commands below that fit models still require the user's explicit
 go-ahead in chat. Changes are confined to `encoder/` and this project's documentation.
