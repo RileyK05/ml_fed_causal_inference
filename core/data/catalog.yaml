@@ -175,6 +175,16 @@ datasets:
     questions: [Q1]
     description: CPI release date per reference month. Also the seed for the auxiliary CPI event calendar (Q3).
 
+  bls_macro_release_dates:
+    path: raw/bls/bls_macro_release_dates.csv
+    layer: raw
+    source: BLS archived news releases (dates from archive file names)
+    grain: event
+    date_column: release_date
+    key: [release, release_date]
+    questions: [Q3]
+    description: Release dates of the CPI (from 1999-06) and the Employment Situation (jobs report, from 1994-02). Scheduled macro-news days for Q3 release-day tests.
+
   # ---- Firm panel (WRDS; licensed, gitignored, pulled by fedcore.ingest.wrds) ----
   sp500_members:
     path: raw/wrds/sp500_members.parquet

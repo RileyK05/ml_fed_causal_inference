@@ -183,7 +183,7 @@ def window_ols(
 
 REAL_DATASETS = (
     "crsp_daily", "sp500_members", "ff_factors_daily", "ccm_link", "comp_fundq", "comp_gics",
-    "usmpd_statements", "mps_surprises", "treasury_1y", "bls_cpi_release_dates",
+    "usmpd_statements", "mps_surprises", "treasury_1y", "bls_macro_release_dates",
 )
 
 
@@ -212,8 +212,8 @@ def load_real() -> CheapData:
     fundq = load("comp_fundq", columns=["gvkey", "rdq"])
     link = load("ccm_link")
     earnings = _earnings_permnos(fundq, link)
-    cpi = load("bls_cpi_release_dates")
-    releases = pd.DatetimeIndex(pd.to_datetime(cpi["release_date"]).unique())
+    macro = load("bls_macro_release_dates")  # CPI from 1999-06, jobs reports from 1994-02
+    releases = pd.DatetimeIndex(pd.to_datetime(macro["release_date"]).unique())
 
     return CheapData(
         panel=panel, rows=rows.reset_index(drop=True), calendar=calendar, permnos=grid["permnos"],

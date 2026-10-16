@@ -13,7 +13,8 @@ SPEC = QuestionSpec(
     ),
     owner="ML workstream",
     depends_on=("Q1",),
-    datasets=("fomc_meetings", "mps_surprises", "usmpd_minutes", "mps_minutes_surprises", "bls_cpi_release_dates"),
+    datasets=("fomc_meetings", "mps_surprises", "usmpd_minutes", "mps_minutes_surprises", "bls_cpi_release_dates",
+              "bls_macro_release_dates"),
     data_needed=(
         "Firm daily bars 1998-present (S&P 100 first, then broaden)",
         "SEC EDGAR as-filed XBRL fundamentals with filing dates (point-in-time)",

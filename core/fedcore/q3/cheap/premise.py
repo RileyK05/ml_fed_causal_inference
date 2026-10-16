@@ -105,17 +105,39 @@ def _joint_features(data: CheapData) -> tuple[np.ndarray, list[str]]:
     return x.to_numpy(dtype=np.float64), list(x.columns)
 
 
-def rate_loadings(data: CheapData, cfg: Config, day_ok=None, width=None, min_obs=None, key="rate") -> pd.DataFrame:
-    """Per panel row: market and 1-year-yield loadings over the ``width`` ordinary days that end
-    the day before the meeting (ret ~ 1 + mkt + dy). Rate loading is % per bp."""
+def rate_loadings(data: CheapData, cfg: Config, day_ok=None, width=None, min_obs=None, key="rate",
+                  factors=("mkt", "dy")) -> pd.DataFrame:
+    """Per panel row: 1-year-yield loading (and market loading, if a factor) over the ``width``
+    ordinary days that end the day before the meeting (ret ~ 1 + factors). Rate loading is % per bp."""
     memo = f"loadings_{key}"
     if memo not in data._memo:
         firm, pos = data.row_index()
         ok = data.ordinary_days() if day_ok is None else day_ok
-        fit = window_ols(data, firm, pos - 1, width or cfg.window, ("mkt", "dy"), ok, min_obs or cfg.min_obs)
-        data._memo[memo] = pd.DataFrame({"mkt_loading": fit["coef"][:, 1], "rate_loading": fit["coef"][:, 2],
-                                         "rate_se": fit["se"][:, 2], "nobs": fit["nobs"]})
+        fit = window_ols(data, firm, pos - 1, width or cfg.window, factors, ok, min_obs or cfg.min_obs)
+        j = 1 + list(factors).index("dy")
+        out = {"rate_loading": fit["coef"][:, j], "rate_se": fit["se"][:, j], "nobs": fit["nobs"]}
+        if "mkt" in factors:
+            out["mkt_loading"] = fit["coef"][:, 1 + list(factors).index("mkt")]
+        data._memo[memo] = pd.DataFrame(out)
     return data._memo[memo]
+
+
+def rate_transfer(data: CheapData, cfg: Config, rate: np.ndarray) -> dict:
+    """Within-meeting regression of the Fed-day return on s x (rate loading), development rows.
+    transfer_ratio = coefficient / 10: 1 means a firm's Fed sensitivity moves one-for-one with
+    its rate loading (s is in 10bp). Loading winsorized at 1/99%."""
+    dev = _dev_rows_idx(data, cfg)
+    dev = dev[np.isfinite(rate[dev])]
+    lo_q, hi_q = np.nanquantile(rate[dev], [0.01, 0.99])
+    r = np.clip(rate, lo_q, hi_q)
+    meet = data.panel.meeting[dev]
+    s = data.panel.shock.astype(np.float64)
+    fit = ols_cluster(s[dev] * demean(meet, r[dev]), demean(meet, data.panel.target[dev].astype(np.float64)), meet)
+    return {"coef_raw_units": float(fit["coef"][0]), "se": float(fit["se"][0]),
+            "transfer_ratio": float(fit["coef"][0] / 10.0), "transfer_ratio_se": float(fit["se"][0] / 10.0),
+            "transfer_t": float(fit["coef"][0] / fit["se"][0]), "rows": fit["n"], "meetings": fit["n_groups"],
+            "median_rate_loading_pct_per_bp": float(np.nanmedian(rate[dev])),
+            "coverage": float(np.isfinite(rate[data.dev_rows(cfg)]).mean())}
 
 
 def _firm_slopes(firm: np.ndarray, meeting: np.ndarray, y: np.ndarray, s_row: np.ndarray, min_n: int):
@@ -273,18 +295,7 @@ def r4(data: CheapData, cfg: Config) -> Result:
         {"model": "joint state + rate_loading", **boot_mean(g_both.to_numpy(), cfg.n_boot, cfg.seed)},
         {"model": "(joint + rate) - joint", **paired(g_both, g_joint, cfg)},
     ]
-    dev = _dev_rows_idx(data, cfg)
-    dev = dev[np.isfinite(rate[dev])]
-    lo_q, hi_q = np.nanquantile(rate[dev], [0.01, 0.99])
-    r = np.clip(rate, lo_q, hi_q)
-    meet = data.panel.meeting[dev]
-    s = data.panel.shock.astype(np.float64)
-    fit = ols_cluster(s[dev] * demean(meet, r[dev]), demean(meet, data.panel.target[dev].astype(np.float64)), meet)
-    transfer = {"coef_raw_units": float(fit["coef"][0]), "se": float(fit["se"][0]),
-                "transfer_ratio": float(fit["coef"][0] / 10.0), "transfer_ratio_se": float(fit["se"][0] / 10.0),
-                "rows": fit["n"], "meetings": fit["n_groups"],
-                "median_rate_loading_pct_per_bp": float(np.nanmedian(rate[dev])),
-                "coverage": float(np.isfinite(rate[data.dev_rows(cfg)]).mean())}
+    transfer = rate_transfer(data, cfg, rate)
     table = pd.DataFrame(rows)
     return Result({"rate_only_gain": rows[0]["estimate"], "rate_adds_to_joint": rows[3]["estimate"],
                    "rate_adds_to_joint_ci_high": rows[3]["ci_high"], "transfer_ratio": transfer["transfer_ratio"]},
@@ -412,25 +423,37 @@ def r7(data: CheapData, cfg: Config) -> Result:
     dev_m = dev_meetings(data, cfg)
     span = (data.calendar >= dev_m.min() - pd.Timedelta(days=400)) & (data.calendar <= dev_m.max())
     rel = data.calendar.isin(data.releases) if data.releases is not None else np.zeros(data.calendar.size, bool)
-    sets = {"all_ordinary": (ordinary, cfg.window, cfg.min_obs),
-            "release_days": (ordinary & rel, 756, 20),
-            "non_release_days": (ordinary & ~rel, cfg.window, cfg.min_obs)}
+    both = ("mkt", "dy")
+    sets = {"all_ordinary": (ordinary, cfg.window, cfg.min_obs, both),
+            "release_days": (ordinary & rel, 756, 20, both),
+            "release_days_rate_only": (ordinary & rel, 756, 20, ("dy",)),
+            "non_release_days": (ordinary & ~rel, cfg.window, cfg.min_obs, both)}
     rows = []
-    for name, (mask, width, min_obs) in sets.items():
+    for name, (mask, width, min_obs, factors) in sets.items():
         n_in_dev = int((mask & span).sum())
         if name != "all_ordinary" and int((rel & span).sum()) < 20:
             rows.append({"day_set": name, "status": "skipped: fewer than 20 release dates in the development span",
                          "days_in_span": n_in_dev})
             continue
-        lo = rate_loadings(data, cfg, day_ok=mask, width=width, min_obs=min_obs, key=name)
-        g = boot_mean(within_gain(data, cfg, lo["rate_loading"].to_numpy()).to_numpy(), cfg.n_boot, cfg.seed)
-        rows.append({"day_set": name, "status": "ok", "days_in_span": n_in_dev, "window": width,
-                     "centered_gain": g["estimate"], "ci_low": g["ci_low"], "ci_high": g["ci_high"]})
+        lo = rate_loadings(data, cfg, day_ok=mask, width=width, min_obs=min_obs, key=name, factors=factors)
+        rate = lo["rate_loading"].to_numpy()
+        g = boot_mean(within_gain(data, cfg, rate).to_numpy(), cfg.n_boot, cfg.seed)
+        t = rate_transfer(data, cfg, rate)
+        rows.append({"day_set": name, "status": "ok", "factors": "+".join(factors), "days_in_span": n_in_dev,
+                     "window": width, "centered_gain": g["estimate"], "ci_low": g["ci_low"], "ci_high": g["ci_high"],
+                     "transfer_ratio": t["transfer_ratio"], "transfer_ratio_se": t["transfer_ratio_se"],
+                     "transfer_t": t["transfer_t"], "coverage": t["coverage"]})
     table = pd.DataFrame(rows)
-    return Result({"sets_run": int((table["status"] == "ok").sum())}, {"day_sets": table},
-                  "Rate loading estimated on each day set, scored like R4 (rate loading only). Release dates: CPI "
-                  "from bls_cpi_release_dates (2023 onward only) and no payroll dates yet, so the release split is "
-                  "skipped for the development period until earlier dates are sourced.")
+    ok = table[table["status"] == "ok"].set_index("day_set")
+    metrics = {"sets_run": int(len(ok))}
+    for name in ok.index:
+        metrics[f"{name}_gain"] = float(ok.loc[name, "centered_gain"])
+        metrics[f"{name}_transfer_ratio"] = float(ok.loc[name, "transfer_ratio"])
+    return Result(metrics, {"day_sets": table},
+                  "Rate loading estimated on each day set and scored like R4: centered_gain (negative = predicts "
+                  "how firms differ on Fed days) and transfer_ratio (sign and size of the link; 1 = one-for-one). "
+                  "Release days: BLS CPI (from 1999-06) and jobs reports (from 1994-02), bls_macro_release_dates; "
+                  "3-year window, at least 20 release days. rate_only drops the market control.")
 
 
 # ---------------------------------------------------------------------- R8
