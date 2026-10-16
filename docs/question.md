@@ -115,13 +115,24 @@ training while its statement is held out. Scheduled FOMC meetings remain the tes
 
 **Metrics:** Primary mean per-meeting MSE in return units; secondary per-meeting RankIC
 between predicted and realized firm returns, relative-return accuracy and regime stability.
-Report gains over pooled, sector and historical-exposure baselines. Quantile heads add
-pinball loss and coverage diagnostics without replacing the conditional-mean target.
+Report gains over pooled, sector and historical-exposure baselines. The historical-exposure
+baseline is `capm_pooled` (`c + beta x (drift + k x s)`, pre-meeting 63-day beta) and is the
+first reference in every Q3 table. Quantile heads add pinball loss and coverage diagnostics
+without replacing the conditional-mean target.
 
 **Data:** Liquid large caps, initially a manageable universe with a long history.
 Audit point-in-time fundamentals and historical membership before choosing the final start
 date. Daily bars back to 1998 do not guarantee fundamentals that far back. A present-day
 survivor universe limits generalization; document survivorship and missing delisting returns.
+
+**Result (2026-10-16; full record in [encoder-report.md](reports/encoder-report.md)):** at the
+one-day horizon, firms' different FOMC-day returns are beta times the market's move: the
+Fed-day drift plus the market's response to the surprise. The locked two-part transformer beat
+pooled in development but tied the CAPM baseline in the one-shot 2022-2025 final test (-0.002,
+range -0.085 to +0.082; 32 meetings). Size, credit rating, cash flow, funding gap, debt maturity
+and growth vs value showed no stable surprise sensitivity beyond beta on day 0, and none of the
+last five did over 3 or 5 days. Sector has a small day-0 effect that fades within days. Q3's b
+beyond beta is not detectable in this data; the 2026 holdout has not been used.
 
 ## Q4 - Does Q3's prediction error forecast subsequent returns?
 

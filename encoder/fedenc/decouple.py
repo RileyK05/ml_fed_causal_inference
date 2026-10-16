@@ -313,6 +313,9 @@ def run(through="2009-03-18", seeds=(0, 1, 2), min_train=60, test_size=16, devic
     return summary, tables
 
 
+REFERENCES = ("capm_pooled", "pooled", "scratch")  # CAPM first: a Q3 model must beat beta
+
+
 def confirm(through="2009-03-18", seeds=(3, 4, 5), members=3, min_train=60, test_size=16, device=None,
             store=None, universe="sp500", sector=False, target="raw", scratch=True, shock="STMT"):
     """Re-test the two-part model on fresh seeds, with the plain transformer refit alongside. Training.
@@ -323,7 +326,8 @@ def confirm(through="2009-03-18", seeds=(3, 4, 5), members=3, min_train=60, test
     the original fundamentals). ``target="market_adjusted"`` fits every arm, pooled included, to
     the abnormal return (see ``workflow.market_adjusted``). ``scratch=False`` skips the plain
     transformer. ``shock="ME"`` uses the whole monetary event surprise (statement plus press
-    conference) instead of the statement window."""
+    conference) instead of the statement window. The CAPM baseline (``capm_pooled``) is the
+    first reference in every table."""
     from fedcore.q3.baselines import BASELINES
     from fedcore.q3.real import FUNDAMENTAL_NAMES, UNIVERSES
     from fedcore.results import ResultStore
@@ -340,6 +344,7 @@ def confirm(through="2009-03-18", seeds=(3, 4, 5), members=3, min_train=60, test
     makers["two_part"] = lambda seed: TwoPartArm(seed, members=members, device=device, fund_cols=base_cols)
     if sector:
         makers["two_part_sector"] = lambda seed: TwoPartArm(seed, members=members, device=device)
+    makers["capm_pooled"] = BASELINES["capm_pooled"]
     makers["pooled"] = BASELINES["pooled"]
     prefix = "twopart-confirm" if universe == "sp500" else f"twopart-{universe}"
     if pd.Timestamp(through) != pd.Timestamp("2009-03-18"):
@@ -353,10 +358,10 @@ def confirm(through="2009-03-18", seeds=(3, 4, 5), members=3, min_train=60, test
                                 min_train=min_train, test_size=test_size, seeds=seeds, store=store,
                                 datasets=UNIVERSES[universe].inputs)
     runs = {arm.removeprefix("tx_"): Path(path) for arm, path in zip(summary["arm"], summary["path"])}
-    tables = {"all": diagnostics.run(runs, ("pooled", "scratch"), store=store, panel=panel)}
+    tables = {"all": diagnostics.run(runs, REFERENCES, store=store, panel=panel)}
     if universe != "sp500":
         sp = rows.loc[rows["in_sp500"], ["meeting", "permno"]].rename(columns={"permno": "firm_id"})
-        tables["sp500_rows"] = diagnostics.run(runs, ("pooled", "scratch"), store=store, panel=panel, keep=sp,
+        tables["sp500_rows"] = diagnostics.run(runs, REFERENCES, store=store, panel=panel, keep=sp,
                                                label="diagnostics-sp500-rows")
     with pd.option_context("display.width", 250, "display.max_columns", 40, "display.float_format", "{:.3f}".format):
         for scope, group in tables.items():

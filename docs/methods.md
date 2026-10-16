@@ -40,6 +40,11 @@ cross-sectional RankIC and relative-return performance so common market predicti
 not conceal weak firm differentiation. Q1 can supply an optional historically fitted offset;
 Q3 need not mechanically reuse Q1's nuisance learners.
 
+**Outcome (2026-10-16):** the masked-patch transformer was built and tested through a one-shot
+final test; it ties the CAPM baseline (`capm_pooled`), so the remaining candidates below have no
+gain to promote from. Any further Q3 model must beat `capm_pooled`, not only pooled. See
+[encoder-report.md](reports/encoder-report.md).
+
 | Candidate | How it represents susceptibility | Role |
 |---|---|---|
 | Ridge interactions | Shock multiplied by observed characteristics, with regularization | Essential interpretable baseline |

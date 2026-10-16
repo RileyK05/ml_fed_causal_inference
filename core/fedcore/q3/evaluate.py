@@ -213,7 +213,7 @@ def run_arms(
         saved[name] = result
     table = pd.DataFrame([{"arm": name, **res.metrics} for name, res in saved.items()])
     if len(saved) > 1:
-        for ref in ("pooled", "ridge_interact"):
+        for ref in ("capm_pooled", "pooled", "ridge_interact"):
             if ref not in saved:
                 continue
             rows = []

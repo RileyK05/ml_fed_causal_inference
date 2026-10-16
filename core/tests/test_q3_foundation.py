@@ -258,6 +258,28 @@ def test_ridge_recovers_planted_sensitivity_on_easy_noise():
     assert result.metrics["b_corr"] > 0.5
 
 
+def test_capm_pooled_recovers_beta_scaled_drift_and_shock():
+    panel = make_synthetic_panel(n_firms=30, n_meetings=20, noise="easy", seed=1)
+    hist, mask = panel.history.copy(), panel.history_mask.copy()
+    rng = np.random.default_rng(0)
+    beta = rng.uniform(0.5, 1.5, len(panel.target))
+    hist[:, :, BETA63] = beta[:, None]
+    hist[0, -1, BETA63] = 9.0  # masked: the last observed beta is used instead
+    mask[0, -1] = False
+    hist[1, :, BETA63] = np.nan  # never observed: beta falls back to 1
+    mask[1] = False
+    beta[1] = 1.0
+    s = np.asarray(panel.shock, dtype=np.float64)
+    target = 0.1 + beta * (0.4 - 0.9 * s)
+    panel = replace(panel, history=hist, history_mask=mask, target=target.astype(np.float32))
+    model = BASELINES["capm_pooled"](0)
+    model.fit(panel)
+    mu, a, b = model.predict(panel)
+    assert (model.c_, model.d_, model.k_) == pytest.approx((0.1, 0.4, -0.9), abs=1e-4)
+    np.testing.assert_allclose(mu, a + b * s, atol=1e-9)
+    np.testing.assert_allclose(b, -0.9 * beta, atol=1e-4)
+
+
 def test_run_arms_saves_a_run(tmp_path):
     run_arms({"pooled": BASELINES["pooled"]}, ResultStore(tmp_path), n_firms=20, n_meetings=40)
     runs = ResultStore(tmp_path).runs("Q3")

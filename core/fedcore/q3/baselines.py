@@ -1,6 +1,8 @@
 """Tabular Q3 baselines. Each exposes ``fit(panel, **kwargs)`` and ``predict(panel) -> (mu, a, b)``.
 
 ``pooled`` is one intercept and one shock loading.
+``capm_pooled`` scales one Fed-day drift and one shock loading by each firm's pre-meeting
+beta: the finance null that firms differ only through beta. Any Q3 model must beat it.
 ``ridge_interact`` is ridge on features, fundamentals, context, and those columns
 interacted with the shock. ``b_hat`` is the shock-coefficient part on each row.
 ``lgbm`` uses the same columns; ``b_hat`` is the finite difference of the
@@ -20,8 +22,8 @@ import lightgbm as lgb
 import numpy as np
 from sklearn.linear_model import Ridge
 
-from fedcore.q3.contracts import Q3Panel, SummaryEncoder
-from fedcore.q3.features import summary_features
+from fedcore.q3.contracts import BETA63, Q3Panel, SummaryEncoder
+from fedcore.q3.features import last_observed, summary_features
 from fedcore.q3.model import ResponseModel
 from fedcore.q3.train import _columns, CLIP
 from fedcore.q3.train import fit as train_fit
@@ -89,6 +91,37 @@ class PooledOLS:
         s = np.asarray(panel.shock, dtype=np.float64)
         mu = self.a_ + self.b_ * s
         return mu, np.full(len(s), self.a_), np.full(len(s), self.b_)
+
+
+class CAPMPooled:
+    """r = c + beta·(d + k·s), fit by OLS on [1, beta, beta·s].
+
+    beta is the firm's last observed 63-day beta before the meeting (1.0 when it has none), so
+    ``a_hat = c + d·beta`` (beta times the Fed-day drift) and ``b_hat = k·beta``.
+    """
+
+    def fit(self, panel: Q3Panel, **kwargs) -> None:
+        del kwargs
+        beta = _beta(panel)
+        s = np.asarray(panel.shock, dtype=np.float64)
+        design = np.column_stack((np.ones(len(s)), beta, beta * s))
+        coef, *_ = np.linalg.lstsq(design, np.asarray(panel.target, dtype=np.float64), rcond=None)
+        self.c_, self.d_, self.k_ = (float(x) for x in coef)
+        self.fit_result = None
+
+    def predict(self, panel: Q3Panel):
+        beta = _beta(panel)
+        s = np.asarray(panel.shock, dtype=np.float64)
+        a = self.c_ + self.d_ * beta
+        b = self.k_ * beta
+        return a + b * s, a, b
+
+
+def _beta(panel: Q3Panel) -> np.ndarray:
+    from fedcore.q3.real import BETA_FALLBACK
+
+    beta = last_observed(panel.history[:, :, BETA63], panel.history_mask)
+    return np.where(np.isfinite(beta), beta, BETA_FALLBACK)
 
 
 class RidgeInteract:
@@ -198,6 +231,7 @@ class SummaryNN:
 
 BASELINES = {
     "pooled": lambda seed: PooledOLS(),
+    "capm_pooled": lambda seed: CAPMPooled(),
     "ridge_interact": lambda seed: RidgeInteract(seed=seed),
     "lgbm": lambda seed: LGBMBaseline(seed=seed),
     "summary_nn": lambda seed: SummaryNN(seed=seed),
