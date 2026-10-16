@@ -13,7 +13,7 @@ firm's pre-meeting traits from the real panel, and reports:
    beta x shock; controlling for beta x the meeting's realized average return. All meetings
    and large-shock meetings (|s| >= 0.25, i.e. >= 2.5bp).
 
-Statistics are computed per seed and then averaged, as in ``daily.b_grade``.
+Statistics are computed per seed and then averaged, as in ``runs.b_grade``.
 
     python -m fedenc.diagnostics NAME=RUN_DIR [NAME=RUN_DIR ...] [--reference pooled scratch]
 """

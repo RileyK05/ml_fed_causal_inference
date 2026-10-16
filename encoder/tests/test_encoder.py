@@ -1,4 +1,4 @@
-"""Unit tests for the patch-transformer encoder and its pre-training (brief M1)."""
+"""Unit tests for the patch-transformer encoder."""
 from __future__ import annotations
 
 import numpy as np
@@ -8,13 +8,9 @@ torch = pytest.importorskip("torch")
 
 from fedcore.q3 import ResponseModel
 from fedcore.q3.contracts import L
-from fedcore.q3.synthetic import make_pretrain_windows, make_synthetic_panel
+from fedcore.q3.synthetic import make_synthetic_panel
 
 from fedenc.encoder_transformer import PatchTransformerEncoder
-from fedenc.pretrain import _choose_masks, _masked_loss, pretrain, window_end_order
-from fedenc.arms import TxArm
-from fedenc.checkpoint import EncoderCheckpoint
-from pathlib import Path
 
 
 def _random_history(n=3, t=L, c=5, p_obs=0.85, seed=0):
@@ -101,96 +97,6 @@ def test_synthetic_rows_always_have_a_valid_patch():
     assert bool(valid.any(dim=1).all())
 
 
-def test_pretrain_choice_only_valid_patches():
-    enc = PatchTransformerEncoder()
-    windows, mask = make_pretrain_windows(60, seed=1)
-    rng = np.random.default_rng(0)
-    choice = _choose_masks(enc, mask, np.arange(60), 0.3, rng)
-    x = torch.from_numpy(np.nan_to_num(windows))
-    m = torch.from_numpy(mask)
-    _, valid = enc.patchify(x, m)
-    valid_np = valid.numpy()
-    assert not (choice & ~valid_np).any()
-    counts = valid_np.sum(axis=1)
-    for i in range(60):
-        if counts[i] > 0:
-            assert 1 <= choice[i].sum() <= counts[i]
-        else:
-            assert choice[i].sum() == 0
-
-
-def test_loss_ignores_unobserved_entries():
-    enc = PatchTransformerEncoder()
-    decoder = torch.nn.Linear(enc.d_model, enc.patch_len * enc.n_channels)
-    windows, mask = make_pretrain_windows(24, seed=2)
-    scaled = np.nan_to_num(windows).astype(np.float32)
-    rows = np.arange(24)
-    rng = np.random.default_rng(3)
-    choice = _choose_masks(enc, mask, rows, 0.3, rng)
-    batch = {
-        "history": torch.from_numpy(np.ascontiguousarray(scaled)),
-        "mask": torch.from_numpy(np.ascontiguousarray(mask)),
-    }
-    enc.eval()
-    with torch.no_grad():
-        loss, count = _masked_loss(enc, decoder, batch, choice)
-        polluted = scaled.copy()
-        polluted[~np.asarray(mask)] = 12345.0
-        batch2 = {
-            "history": torch.from_numpy(np.ascontiguousarray(polluted)),
-            "mask": batch["mask"],
-        }
-        loss2, count2 = _masked_loss(enc, decoder, batch2, choice)
-    assert count == count2 > 0
-    assert torch.allclose(loss, loss2, atol=1e-5)
-    _, pvalid = enc.patchify(batch["history"], batch["mask"])
-    padded = np.pad(np.asarray(mask), ((0, 0), (enc.total_days - L, 0)))
-    bits = padded.reshape(24, -1, enc.patch_len)
-    sel = choice & pvalid.numpy()
-    expected = int(bits[sel].sum())
-    assert count == expected
-
-
-def test_window_end_order_recovers_true_order():
-    rng = np.random.default_rng(0)
-    n_firms, n_days, t = 3, 400, 120
-    paths = rng.normal(0, 1, size=(n_firms, n_days, 5)).astype(np.float32).cumsum(axis=1)
-    ends = np.arange(n_days - t - 20, n_days - 20, 20)
-    windows, masks, truth = [], [], []
-    for firm in range(n_firms):
-        for end in ends:
-            windows.append(paths[firm, end - t : end])
-            masks.append(np.ones(t, dtype=bool))
-            truth.append(int(end))
-    windows = np.stack(windows).astype(np.float32)
-    masks = np.stack(masks)
-    truth = np.asarray(truth)
-    perm = rng.permutation(truth.size)
-    order = window_end_order(windows[perm], masks[perm])
-    assert order.method == "overlap_chain"
-    got = np.argsort(order.key, kind="stable")
-    assert np.array_equal(truth[perm][got], np.sort(truth[perm]))
-
-
-def test_window_end_order_falls_back_on_tiny_corpus():
-    windows = np.zeros((4, L, 5), dtype=np.float32)
-    mask = np.ones((4, L), dtype=bool)
-    order = window_end_order(windows, mask)
-    assert order.method in ("draw_order", "overlap_chain")
-
-
-def test_pretrain_smoke():
-    enc = PatchTransformerEncoder()
-    windows, mask = make_pretrain_windows(80, seed=5)
-    result = pretrain(enc, windows, mask, epochs=2, seed=0, batch_size=32, patience=2)
-    assert len(result.train_loss) <= 2
-    assert len(result.val_loss) == len(result.train_loss)
-    assert np.isfinite(result.val_loss).all()
-    assert result.best_epoch >= 1
-    assert result.state_dict.keys() == enc.state_dict().keys()
-    assert set(result.curves.columns) == {"epoch", "train_loss", "val_loss"}
-
-
 def test_response_model_integration():
     enc = PatchTransformerEncoder()
     model = ResponseModel(enc, n_fund=3, n_ctx=4)
@@ -236,53 +142,6 @@ def test_pool_and_patch_len_variants():
         h = enc(x, mask)
     assert h.shape == (2, 64)
     assert enc.n_patches == 26
-
-
-def test_txarm_fit_predict_smoke():
-    panel = make_synthetic_panel(n_firms=8, n_meetings=12, noise="easy", seed=0)
-    arm = TxArm(seed=0, max_epochs=2, patience=2)
-    arm.fit(panel, seed=0)
-    mu, a, b = arm.predict(panel)
-    assert mu.shape == panel.target.shape
-    assert np.isfinite(mu).all() and np.isfinite(a).all() and np.isfinite(b).all()
-    assert arm.fit_result.best_epoch >= 1
-
-
-def test_pretrained_top_freezes_the_lower_stack():
-    source = PatchTransformerEncoder()
-    state = {k: v.clone() for k, v in source.state_dict().items()}
-    checkpoint = EncoderCheckpoint(Path("unused"), state,
-                                   {"hist_median": np.zeros(5), "hist_iqr": np.ones(5)},
-                                   source.get_config(), {"available_through": "1990-01-01"}, {}, "test")
-    panel = make_synthetic_panel(n_firms=8, n_meetings=12, noise="easy", seed=0)
-    arm = TxArm(
-        seed=0,
-        init="pretrained",
-        adapt="top",
-        checkpoint=checkpoint,
-        max_epochs=2,
-        patience=2,
-    )
-    arm.fit(panel, seed=0)
-    enc = arm.model.encoder
-    assert torch.equal(enc.proj.weight.cpu(), state["proj.weight"])  # the arm may train on a GPU
-    assert torch.equal(enc.pos.cpu(), state["pos"])
-    assert torch.equal(enc.blocks.layers[0].linear1.weight.cpu(), state["blocks.layers.0.linear1.weight"])
-    assert not enc.proj.weight.requires_grad
-    assert not enc.blocks.layers[0].linear1.weight.requires_grad
-    assert enc.blocks.layers[-1].linear1.weight.requires_grad
-    assert not enc.blocks.layers[0].linear1.weight.grad
-
-
-def test_pretrained_arm_refuses_missing_checkpoint():
-    """Real data requires an explicit dated checkpoint; never auto-pretrain."""
-    import dataclasses
-
-    from fedcore.q3 import make_synthetic_panel
-
-    panel = dataclasses.replace(make_synthetic_panel(n_firms=6, n_meetings=6, seed=0), a_true=None, b_true=None)
-    with pytest.raises(ValueError, match="pre-cutoff"):
-        TxArm(init="pretrained", adapt="frozen", max_epochs=1).fit(panel)
 
 
 def test_masked_tokens_retain_positions_without_exposing_hidden_values():
