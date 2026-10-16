@@ -6,8 +6,8 @@ import pandas as pd
 import pytest
 
 from fedcore.q3 import BASELINES, make_synthetic_panel, run_arms
-from fedcore.q3.contracts import CHANNELS, L, RET
-from fedcore.q3.real import CONTEXT_NAMES, FUNDAMENTAL_NAMES, Inputs, build_panel, pretrain_corpus
+from fedcore.q3.contracts import L, RET
+from fedcore.q3.real import CONTEXT_NAMES, FUNDAMENTAL_NAMES, Inputs, build_panel
 from fedcore.results import ResultStore
 
 DAYS = pd.bdate_range("2000-01-03", periods=300)
@@ -146,27 +146,6 @@ def test_run_arms_real_uses_the_cached_panel(tmp_path, monkeypatch):
     assert params["noise"] is None
     with pytest.raises(ValueError, match="synthetic data only"):
         run_arms({"pooled": BASELINES["pooled"]}, store, data="real", n_firms=5)
-
-
-def test_pretrain_corpus_ends_before_cutoff_and_carries_end_dates():
-    corpus = pretrain_corpus(M1, stride=1, min_observed=200, inputs=_inputs())
-    assert len(corpus) > 0
-    assert (corpus.end_dates < M1).all()
-    assert corpus.end_dates.max() == DAYS[259]  # last day before the cutoff
-    history, mask, ends = corpus.sample(5, seed=0)
-    assert history.shape == (5, L, len(CHANNELS)) and mask.shape == (5, L)
-    assert np.array_equal(np.isfinite(history).all(axis=-1), mask)
-    assert ends.is_monotonic_increasing
-    # window i's last row is that firm's return on its end date
-    h, _ = corpus.windows(np.array([0]))
-    f, e = corpus.firm[0], corpus.end[0]
-    assert np.allclose(h[0, -1], corpus.channels[f, e], equal_nan=True)
-
-
-def test_pretrain_corpus_respects_min_observed_and_stride():
-    corpus = pretrain_corpus(DAYS[-1], stride=5, min_observed=252, inputs=_inputs())
-    assert ((corpus.end - (L - 1)) % 5 == 0).all()
-    assert corpus.observed[corpus.firm[:, None], corpus.end[:, None] + np.arange(-L + 1, 1)].all()
 
 
 def test_holdout_inputs_splice_yfinance_after_the_crsp_end(monkeypatch):

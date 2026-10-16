@@ -11,7 +11,6 @@ from fedcore.q3.model import ResponseModel
 from fedcore.q3.synthetic import (
     CONTEXT_NAMES,
     FUNDAMENTAL_NAMES,
-    make_pretrain_windows,
     make_synthetic_panel,
     sequence_pattern,
     synthetic_components,
@@ -42,7 +41,6 @@ __all__ = [
     "SummaryEncoder",
     "compare",
     "fit",
-    "make_pretrain_windows",
     "make_synthetic_panel",
     "per_meeting_mse",
     "predict",

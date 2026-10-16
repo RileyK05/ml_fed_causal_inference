@@ -223,38 +223,6 @@ def make_synthetic_panel(
     return panel
 
 
-def make_pretrain_windows(
-    n_windows: int,
-    seed: int = 0,
-    *,
-    n_firms: int = 48,
-    n_days: int | None = None,
-) -> tuple[np.ndarray, np.ndarray]:
-    """Ordinary-day windows from the same generator: ``(history, mask)``.
-
-    No meeting and no target. Windows are sampled with replacement from one
-    simulated universe (``n_firms`` paths). Shape is ``(n_windows, 252, C)``
-    and ``(n_windows, 252)``.
-    """
-    if n_windows < 1:
-        raise ValueError("n_windows must be positive")
-    rng = np.random.default_rng(seed)
-    n_days = int(n_days or (L + 600))
-    if n_days <= L:
-        raise ValueError(f"n_days must exceed {L}")
-    sim = _simulate(n_firms, n_days, rng)
-    ends = rng.integers(L, n_days, size=n_windows)
-    firms = rng.integers(0, n_firms, size=n_windows)
-    history = np.empty((n_windows, L, len(CHANNELS)), dtype=np.float32)
-    mask = np.empty((n_windows, L), dtype=bool)
-    channels = sim["channels"]
-    observed = sim["observed"]
-    for i, (firm, end) in enumerate(zip(firms, ends)):
-        history[i] = channels[firm, end - L : end]
-        mask[i] = observed[firm, end - L : end]
-    return history, mask
-
-
 def _simulate(n_firms: int, n_days: int, rng: np.random.Generator) -> dict:
     """One universe. Random draws are in a fixed order so a seed is the whole panel."""
     log_sig = np.zeros(n_days, dtype=np.float64)

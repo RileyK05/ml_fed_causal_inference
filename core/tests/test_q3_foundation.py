@@ -17,7 +17,6 @@ from fedcore.q3 import (
     L,
     ChannelScaler,
     SummaryEncoder,
-    make_pretrain_windows,
     make_synthetic_panel,
     per_meeting_mse,
     run_arms,
@@ -115,16 +114,6 @@ def test_sequence_pattern_is_sometimes_on():
     panel = make_synthetic_panel(n_firms=30, n_meetings=20, seed=0)
     rate = float(sequence_pattern(panel.history, panel.history_mask).mean())
     assert 0.05 < rate < 0.80
-
-
-def test_pretrain_windows_are_deterministic_and_masked():
-    history, mask = make_pretrain_windows(5, seed=0)
-    again, again_mask = make_pretrain_windows(5, seed=0)
-    assert history.shape == (5, L, 5) and mask.shape == (5, L) and mask.dtype == bool
-    assert history.dtype == np.float32
-    assert np.array_equal(history, again, equal_nan=True)
-    assert np.array_equal(mask, again_mask)
-    assert np.array_equal(np.isfinite(history).all(axis=-1), mask)
 
 
 def test_scaler_ignores_rows_it_was_not_fit_on():
