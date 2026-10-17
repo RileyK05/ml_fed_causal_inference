@@ -18,14 +18,14 @@ def _frame(effect: float, seed: int = 0, n_meetings: int = 120, n_firms: int = 6
 
 
 def test_group_test_detects_a_planted_shock_effect():
-    per, p, n = gates.group_test(_frame(2.0), "g", "y", ["mkt", "s"], "s")
+    per, p, n, _ = gates.group_test(_frame(2.0), "g", "y", ["mkt", "s"], "s")
     assert n == 120 and p < 1e-6 and max(per, key=lambda g: per[g][0]) == "c"
-    _, p_null, _ = gates.group_test(_frame(0.0, seed=1), "g", "y", ["mkt", "s"], "s")
+    _, p_null, _, _ = gates.group_test(_frame(0.0, seed=1), "g", "y", ["mkt", "s"], "s")
     assert p_null > 0.01
 
 
 def test_magnitude_test_detects_bigger_moves_on_large_days():
     d = _frame(0.0, seed=2)
     d.loc[(d["g"] == "c") & (d["large"] == 1), "y"] *= 3.0
-    per, p, n_large = gates.magnitude_test(d, "g", "y")
+    per, p, n_large, _ = gates.magnitude_test(d, "g", "y")
     assert p < 1e-6 and max(per, key=lambda g: per[g][0]) == "c" and n_large > 10
