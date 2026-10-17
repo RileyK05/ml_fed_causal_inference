@@ -1,0 +1,37 @@
+final test: train 221 meetings to 2021-12-15, test 32 meetings 2022-01-26 to 2025-12-10
+     arm                            run_id                                                                          path    mse  rank_ic   b_slope     b_se       b_t
+two_part 20261016-024736_q3-final-two-part /root/fed/encoder/results/q3_susceptibility/20261016-024736_q3-final-two-part 5.7233  0.10893 -0.092719 1.326919 -0.069875
+   arm                          run_id                                                                        path      mse  rank_ic  b_slope  b_se  b_t
+pooled 20261016-024737_q3-final-pooled /root/fed/encoder/results/q3_susceptibility/20261016-024737_q3-final-pooled 5.768215      NaN      NaN   NaN  NaN
+
+== mse-split
+   model  total  mean_part    cs  cs_a_only  cs_b_only  total_non_crisis  total_crisis         total_vs_pooled     mean_part_vs_pooled            cs_vs_pooled
+two_part  5.723      1.771 3.952      3.946      4.010             5.723           NaN -0.045 (-0.110, +0.018) +0.000 (-0.000, +0.000) -0.045 (-0.110, +0.018)
+  pooled  5.768      1.771 3.997      3.997      3.997             5.768           NaN                     NaN                     NaN                     NaN
+
+== mse-by-window
+   model  window  meetings  total  mean_part    cs
+two_part       0        32  5.723      1.771 3.952
+  pooled       0        32  5.768      1.771 3.997
+
+== mse-by-surprise
+   model       surprise  meetings  crisis_meetings  total  mean_part    cs  share_of_error         total_vs_pooled            cs_vs_pooled
+two_part      tiny <1bp         9                0  5.188      0.738 4.450           0.255 -0.105 (-0.228, -0.003) -0.105 (-0.228, -0.003)
+two_part  small 1-2.5bp        13                0  5.737      1.485 4.252           0.407 -0.068 (-0.155, +0.017) -0.068 (-0.155, +0.017)
+two_part medium 2.5-5bp         3                0  7.450      4.014 3.435           0.122 +0.104 (-0.280, +0.516) +0.104 (-0.280, +0.516)
+two_part    large >=5bp         7                0  5.647      2.671 2.976           0.216 +0.013 (-0.058, +0.074) +0.013 (-0.058, +0.074)
+  pooled      tiny <1bp         9                0  5.293      0.738 4.555           0.258                     NaN                     NaN
+  pooled  small 1-2.5bp        13                0  5.805      1.485 4.320           0.409                     NaN                     NaN
+  pooled medium 2.5-5bp         3                0  7.346      4.014 3.332           0.119                     NaN                     NaN
+  pooled    large >=5bp         7                0  5.635      2.671 2.963           0.214                     NaN                     NaN
+
+== anatomy
+   model  corr_a_b  spearman_a_b  corr_b_beta  corr_b_vol  corr_a_beta  corr_a_vol  corr_b_leverage  corr_b_size  surrogate_r2_b  b_persist_next  b_persist_4  b_sign_flip_next  b_spread
+two_part    -0.630        -0.627       -0.516      -0.395        0.706       0.533           -0.093        0.331           0.679           0.855        0.800             0.157     0.243
+
+== b-grades
+   model    meetings  rank_ic            raw        minus_a        a_and_b         a_coef ctrl_beta_shock ctrl_beta_market beta_market_coef
+two_part          32    0.109 -0.09 (t -0.1) +0.43 (t +0.3) +0.58 (t +0.5) +1.28 (t +2.5)  +0.86 (t +1.2)   +0.06 (t +0.1)   +0.68 (t +4.0)
+two_part          10   -0.026 +0.39 (t +0.3) +0.91 (t +0.7) +0.40 (t +0.3) +0.05 (t +0.0)  +1.04 (t +1.4)   +0.61 (t +0.7)   +0.74 (t +2.6)
+  pooled         all      NaN            NaN            NaN            NaN            NaN             NaN              NaN              NaN
+  pooled large_shock      NaN            NaN            NaN            NaN            NaN             NaN              NaN              NaN

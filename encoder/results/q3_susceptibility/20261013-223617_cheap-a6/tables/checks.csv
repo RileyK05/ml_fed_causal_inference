@@ -1,0 +1,9 @@
+check,passed,detail
+meeting_dates_are_trading_days,True,0 rows off-calendar
+history_ends_prior_close,True,0 of 5000 sampled rows differ
+target_is_meeting_day_return,True,0 of 5000 comparable rows differ; 0 meeting days masked in the grid (zero volume)
+shock_constant_within_meeting,True,
+shock_is_10x_STMT,True,0 meetings differ
+context_y1_is_prior_day,True,0 meetings differ
+shock_units_plausible_bp,True,median |surprise| 1.42bp
+target_units_percent,True,target sd 2.42

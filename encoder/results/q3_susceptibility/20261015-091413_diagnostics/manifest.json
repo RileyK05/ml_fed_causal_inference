@@ -1,0 +1,37 @@
+{
+  "question": "Q3",
+  "question_key": "q3_susceptibility",
+  "name": "diagnostics",
+  "run_id": "20261015-091413_diagnostics",
+  "role": "exploratory",
+  "created": "2026-10-15T09:14:13",
+  "params": {
+    "runs": {
+      "pooled": "encoder/results/q3_susceptibility/20261015-034818_inputs-exp-pooled",
+      "scratch": "encoder/results/q3_susceptibility/20261015-033807_inputs-exp-tx-scratch",
+      "daily": "encoder/results/q3_susceptibility/20261015-030832_daily-exp-tx-daily",
+      "branch32": "encoder/results/q3_susceptibility/20261015-034246_inputs-exp-tx-branch32",
+      "no_history": "encoder/results/q3_susceptibility/20261015-034817_inputs-exp-tx-no-history"
+    },
+    "large_shock": 0.25,
+    "n_boot": 10000,
+    "references": [
+      "pooled",
+      "scratch"
+    ]
+  },
+  "metrics": {},
+  "datasets": {},
+  "tables": [
+    "mse-split",
+    "mse-by-window",
+    "anatomy",
+    "b-grades"
+  ],
+  "figures": [],
+  "notes": "No fitting: computed from saved predictions.",
+  "env": {
+    "python": "3.12.10",
+    "pandas": "3.0.6"
+  }
+}

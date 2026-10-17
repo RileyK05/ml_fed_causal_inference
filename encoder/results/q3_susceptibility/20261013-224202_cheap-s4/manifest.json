@@ -1,0 +1,66 @@
+{
+  "question": "Q3",
+  "question_key": "q3_susceptibility",
+  "name": "cheap-S4",
+  "run_id": "20261013-224202_cheap-s4",
+  "role": "exploratory",
+  "created": "2026-10-13T22:42:02",
+  "params": {
+    "check": "S4",
+    "title": "Synthetic: helpful vs misleading ordinary-day exposure",
+    "kind": "synthetic",
+    "data": "simulated",
+    "config": {
+      "dev_meetings": 120,
+      "inner_min_train": 72,
+      "inner_test": 12,
+      "outer_min_train": 120,
+      "outer_test": 16,
+      "val_meetings": 18,
+      "ridge_alpha": 1.0,
+      "n_boot": 2000,
+      "n_perm": 200,
+      "window": 63,
+      "min_obs": 40,
+      "sample_every": 21,
+      "horizons": [
+        21,
+        63,
+        126
+      ],
+      "r1_effects": [
+        0.0,
+        0.25,
+        0.5,
+        1.0,
+        2.0
+      ],
+      "r2_min_meetings": 80,
+      "r8_min_meetings": 30,
+      "synthetic_firms": 150,
+      "synthetic_meetings": 160,
+      "seed": 0
+    }
+  },
+  "metrics": {
+    "b_rmse_opposed_as_feature": 0.4408818412765532,
+    "b_rmse_opposed_as_prior_offset": 1.425421613331814,
+    "b_rmse_opposed_no_transfer": 0.7890196096420506,
+    "b_rmse_related_as_feature": 0.4544821112335305,
+    "b_rmse_related_as_prior_offset": 0.459790786579315,
+    "b_rmse_related_no_transfer": 0.7890196096420506,
+    "b_rmse_unrelated_as_feature": 0.7893846437972882,
+    "b_rmse_unrelated_as_prior_offset": 1.0961367701596534,
+    "b_rmse_unrelated_no_transfer": 0.7890196096420506
+  },
+  "datasets": {},
+  "tables": [
+    "transfer"
+  ],
+  "figures": [],
+  "notes": "Fed sensitivity depends on a latent firm trait. The ordinary-day exposure is related, unrelated or opposed to it. As a learned feature its sign is estimated, so 'opposed' still helps; used as a fixed prior (offset) it causes negative transfer when unrelated or opposed. A frozen pre-trained encoder sits between the two.",
+  "env": {
+    "python": "3.12.10",
+    "pandas": "3.0.6"
+  }
+}

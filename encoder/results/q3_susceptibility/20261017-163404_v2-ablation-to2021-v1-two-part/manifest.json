@@ -1,0 +1,57 @@
+{
+  "question": "Q3",
+  "question_key": "q3_susceptibility",
+  "name": "v2-ablation-to2021-v1_two_part",
+  "run_id": "20261017-163404_v2-ablation-to2021-v1-two-part",
+  "role": "exploratory",
+  "created": "2026-10-17T16:34:04",
+  "params": {
+    "arm": "v1_two_part",
+    "seeds": [
+      0,
+      1,
+      2
+    ],
+    "min_train": 60,
+    "test_size": 16,
+    "through": "2021-12-31",
+    "members": 3
+  },
+  "metrics": {
+    "n_seeds": 3,
+    "n_test_meetings": 161,
+    "mse_per_meeting": 5.90524356317034,
+    "mse_per_meeting_std": 0.0030656708153988083,
+    "centered_mse": 4.123914055323446,
+    "centered_mse_std": 0.0030656708153993036,
+    "rank_ic": 0.07404823697286439,
+    "rank_ic_std": 0.0010404901682992832,
+    "rank_ic_defined_frac": 1.0,
+    "rank_ic_defined_frac_std": 0.0,
+    "b_slope": 2.7464561349484495,
+    "b_se": 4.350222077537118,
+    "b_t": 0.6313369952145887
+  },
+  "datasets": {
+    "crsp_daily": "76f7cd27e0c5",
+    "sp500_members": "766f0d47f931",
+    "ff_factors_daily": "86bd2cd117b1",
+    "ccm_link": "39f69dc59797",
+    "comp_fundq": "60eaa21d9aab",
+    "comp_gics": "644f6f0f534a",
+    "usmpd_statements": "8494c70a7e8b",
+    "mps_surprises": "c5b7d50b768c",
+    "treasury_1y": "58fc38308746"
+  },
+  "tables": [
+    "predictions",
+    "folds",
+    "curves"
+  ],
+  "figures": [],
+  "notes": "",
+  "env": {
+    "python": "3.11.10",
+    "pandas": "3.0.6"
+  }
+}

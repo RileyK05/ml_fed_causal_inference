@@ -1,0 +1,25 @@
+{
+  "question": "Q3",
+  "question_key": "q3_susceptibility",
+  "name": "twopart-top1500-comparison",
+  "run_id": "20261015-201129_twopart-top1500-comparison",
+  "role": "exploratory",
+  "created": "2026-10-15T20:11:29",
+  "params": {
+    "through": "2009-03-18",
+    "lambda_mean": 0.05,
+    "members": 3,
+    "universe": "top1500"
+  },
+  "metrics": {},
+  "datasets": {},
+  "tables": [
+    "comparison"
+  ],
+  "figures": [],
+  "notes": "",
+  "env": {
+    "python": "3.11.10",
+    "pandas": "3.0.6"
+  }
+}

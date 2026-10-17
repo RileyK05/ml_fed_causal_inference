@@ -1,0 +1,62 @@
+{
+  "question": "Q3",
+  "question_key": "q3_susceptibility",
+  "name": "q3-final-two_part",
+  "run_id": "20261016-024736_q3-final-two-part",
+  "role": "primary",
+  "created": "2026-10-16T02:47:36",
+  "params": {
+    "arm": "two_part",
+    "seeds": [
+      6,
+      7,
+      8
+    ],
+    "min_train": 221,
+    "test_size": 32,
+    "through": "2025-12-31",
+    "dev_end": "2021-12-31",
+    "lambda_mean": 0.05,
+    "members": 3,
+    "universe": "sp500",
+    "target": "raw",
+    "locked_spec": "two_part"
+  },
+  "metrics": {
+    "n_seeds": 3,
+    "n_test_meetings": 32,
+    "mse_per_meeting": 5.7233003123118875,
+    "mse_per_meeting_std": 0.015515505779425268,
+    "centered_mse": 3.9520236570278695,
+    "centered_mse_std": 0.015515505779426033,
+    "rank_ic": 0.10893016186157563,
+    "rank_ic_std": 0.003302078788432573,
+    "rank_ic_defined_frac": 1.0,
+    "rank_ic_defined_frac_std": 0.0,
+    "b_slope": -0.09271868899585173,
+    "b_se": 1.326918964862404,
+    "b_t": -0.06987517056511908
+  },
+  "datasets": {
+    "crsp_daily": "56a316e2b455",
+    "sp500_members": "766f0d47f931",
+    "ff_factors_daily": "86bd2cd117b1",
+    "ccm_link": "39f69dc59797",
+    "comp_fundq": "60eaa21d9aab",
+    "comp_gics": "644f6f0f534a",
+    "usmpd_statements": "8494c70a7e8b",
+    "mps_surprises": "c5b7d50b768c",
+    "treasury_1y": "58fc38308746"
+  },
+  "tables": [
+    "predictions",
+    "folds",
+    "curves"
+  ],
+  "figures": [],
+  "notes": "",
+  "env": {
+    "python": "3.11.10",
+    "pandas": "3.0.6"
+  }
+}

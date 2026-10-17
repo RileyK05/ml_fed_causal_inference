@@ -1,0 +1,61 @@
+{
+  "question": "Q3",
+  "question_key": "q3_susceptibility",
+  "name": "twopart-confirm-to2021-adj-two_part",
+  "run_id": "20261015-205222_twopart-confirm-to2021-adj-two-part",
+  "role": "exploratory",
+  "created": "2026-10-15T20:52:22",
+  "params": {
+    "arm": "two_part",
+    "seeds": [
+      3,
+      4,
+      5
+    ],
+    "min_train": 60,
+    "test_size": 32,
+    "through": "2021-12-31",
+    "lambda_mean": 0.05,
+    "members": 1,
+    "universe": "sp500",
+    "sector": true,
+    "target": "market_adjusted"
+  },
+  "metrics": {
+    "n_seeds": 3,
+    "n_test_meetings": 161,
+    "mse_per_meeting": 3.891375134632142,
+    "mse_per_meeting_std": 0.005111800802478608,
+    "centered_mse": 3.818608164508518,
+    "centered_mse_std": 0.00511180080247788,
+    "rank_ic": 0.02767011959813086,
+    "rank_ic_std": 0.005280255874059795,
+    "rank_ic_defined_frac": 1.0,
+    "rank_ic_defined_frac_std": 0.0,
+    "b_slope": -0.29387373498027997,
+    "b_se": 0.7382495914194068,
+    "b_t": -0.39806826633694326
+  },
+  "datasets": {
+    "crsp_daily": "76f7cd27e0c5",
+    "sp500_members": "766f0d47f931",
+    "ff_factors_daily": "86bd2cd117b1",
+    "ccm_link": "39f69dc59797",
+    "comp_fundq": "60eaa21d9aab",
+    "comp_gics": "644f6f0f534a",
+    "usmpd_statements": "8494c70a7e8b",
+    "mps_surprises": "c5b7d50b768c",
+    "treasury_1y": "58fc38308746"
+  },
+  "tables": [
+    "predictions",
+    "folds",
+    "curves"
+  ],
+  "figures": [],
+  "notes": "",
+  "env": {
+    "python": "3.11.10",
+    "pandas": "3.0.6"
+  }
+}

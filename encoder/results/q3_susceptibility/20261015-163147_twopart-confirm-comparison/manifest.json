@@ -1,0 +1,24 @@
+{
+  "question": "Q3",
+  "question_key": "q3_susceptibility",
+  "name": "twopart-confirm-comparison",
+  "run_id": "20261015-163147_twopart-confirm-comparison",
+  "role": "exploratory",
+  "created": "2026-10-15T16:31:47",
+  "params": {
+    "through": "2009-03-18",
+    "lambda_mean": 0.05,
+    "members": 3
+  },
+  "metrics": {},
+  "datasets": {},
+  "tables": [
+    "comparison"
+  ],
+  "figures": [],
+  "notes": "",
+  "env": {
+    "python": "3.11.10",
+    "pandas": "3.0.6"
+  }
+}

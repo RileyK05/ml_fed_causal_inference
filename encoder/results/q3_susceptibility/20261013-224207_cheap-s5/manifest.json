@@ -1,0 +1,60 @@
+{
+  "question": "Q3",
+  "question_key": "q3_susceptibility",
+  "name": "cheap-S5",
+  "run_id": "20261013-224207_cheap-s5",
+  "role": "exploratory",
+  "created": "2026-10-13T22:42:07",
+  "params": {
+    "check": "S5",
+    "title": "Synthetic: shock-dependent noise and saturating response",
+    "kind": "synthetic",
+    "data": "simulated",
+    "config": {
+      "dev_meetings": 120,
+      "inner_min_train": 72,
+      "inner_test": 12,
+      "outer_min_train": 120,
+      "outer_test": 16,
+      "val_meetings": 18,
+      "ridge_alpha": 1.0,
+      "n_boot": 2000,
+      "n_perm": 200,
+      "window": 63,
+      "min_obs": 40,
+      "sample_every": 21,
+      "horizons": [
+        21,
+        63,
+        126
+      ],
+      "r1_effects": [
+        0.0,
+        0.25,
+        0.5,
+        1.0,
+        2.0
+      ],
+      "r2_min_meetings": 80,
+      "r8_min_meetings": 30,
+      "synthetic_firms": 150,
+      "synthetic_meetings": 160,
+      "seed": 0
+    }
+  },
+  "metrics": {
+    "overswing_top_quintile_saturating": 1.0456756630962802,
+    "resid2_slope_heteroskedastic": 27.44200317350083
+  },
+  "datasets": {},
+  "tables": [
+    "cases",
+    "calibration-by-abs-s"
+  ],
+  "figures": [],
+  "notes": "Heteroskedastic: noise grows with |s|, linear mean; the residual^2 slope on |s| should be positive. Saturating: response flattens past 3bp; a ratio above 1 in the top |s| quintile is overswing from the linear head.",
+  "env": {
+    "python": "3.12.10",
+    "pandas": "3.0.6"
+  }
+}

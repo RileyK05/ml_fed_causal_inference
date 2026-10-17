@@ -1,0 +1,4 @@
+gate,tests,p_below_01,expected_by_chance,candidates,passing,passing_list,result
+G1,306,34,3.1,54,4,sector/raw/s_info/day 0; sector/raw/s_policy/day 0; sector/raw/s_info/days 0-2; sector/raw/s_policy/days 0-2,PASS
+G2,468,45,4.7,68,1,rate beta (63d)/within sector/s x drawdown/days 0-2,PASS
+G3,98,3,1.0,16,0,,FAIL

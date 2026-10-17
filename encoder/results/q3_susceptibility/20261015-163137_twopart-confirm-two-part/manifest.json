@@ -1,0 +1,58 @@
+{
+  "question": "Q3",
+  "question_key": "q3_susceptibility",
+  "name": "twopart-confirm-two_part",
+  "run_id": "20261015-163137_twopart-confirm-two-part",
+  "role": "exploratory",
+  "created": "2026-10-15T16:31:37",
+  "params": {
+    "arm": "two_part",
+    "seeds": [
+      3,
+      4,
+      5
+    ],
+    "min_train": 60,
+    "test_size": 16,
+    "through": "2009-03-18",
+    "lambda_mean": 0.05,
+    "members": 3
+  },
+  "metrics": {
+    "n_seeds": 3,
+    "n_test_meetings": 60,
+    "mse_per_meeting": 8.532410440606638,
+    "mse_per_meeting_std": 0.012995728635638939,
+    "centered_mse": 6.055564894690271,
+    "centered_mse_std": 0.012995728635638847,
+    "rank_ic": 0.10591122495686618,
+    "rank_ic_std": 0.009236111514634899,
+    "rank_ic_defined_frac": 1.0,
+    "rank_ic_defined_frac_std": 0.0,
+    "b_slope": 2.743189571854007,
+    "b_se": 4.72787472631384,
+    "b_t": 0.5802162135528445
+  },
+  "datasets": {
+    "crsp_daily": "56a316e2b455",
+    "sp500_members": "766f0d47f931",
+    "ff_factors_daily": "86bd2cd117b1",
+    "ccm_link": "39f69dc59797",
+    "comp_fundq": "60eaa21d9aab",
+    "comp_gics": "644f6f0f534a",
+    "usmpd_statements": "8494c70a7e8b",
+    "mps_surprises": "c5b7d50b768c",
+    "treasury_1y": "58fc38308746"
+  },
+  "tables": [
+    "predictions",
+    "folds",
+    "curves"
+  ],
+  "figures": [],
+  "notes": "",
+  "env": {
+    "python": "3.11.10",
+    "pandas": "3.0.6"
+  }
+}

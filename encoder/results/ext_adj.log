@@ -1,0 +1,62 @@
+     arm                                              run_id                                                                                            path      mse  rank_ic   b_slope    b_se       b_t
+two_part 20261015-205222_twopart-confirm-to2021-adj-two-part /root/fed/encoder/results/q3_susceptibility/20261015-205222_twopart-confirm-to2021-adj-two-part 3.891375  0.02767 -0.293874 0.73825 -0.398068
+            arm                                                     run_id                                                                                                   path      mse  rank_ic   b_slope     b_se       b_t
+two_part_sector 20261015-210258_twopart-confirm-to2021-adj-two-part-sector /root/fed/encoder/results/q3_susceptibility/20261015-210258_twopart-confirm-to2021-adj-two-part-sector 3.892912 0.017414 -0.476763 0.651697 -0.731572
+   arm                                            run_id                                                                                          path      mse  rank_ic  b_slope  b_se  b_t
+pooled 20261015-210301_twopart-confirm-to2021-adj-pooled /root/fed/encoder/results/q3_susceptibility/20261015-210301_twopart-confirm-to2021-adj-pooled 3.892698      NaN      NaN   NaN  NaN
+
+== [all] mse-split
+          model  total  mean_part    cs  cs_a_only  cs_b_only  total_non_crisis  total_crisis         total_vs_pooled     mean_part_vs_pooled            cs_vs_pooled
+       two_part  3.891      0.073 3.819      3.817      3.822             3.111        10.967 -0.001 (-0.006, +0.004) +0.000 (-0.000, +0.000) -0.001 (-0.006, +0.004)
+two_part_sector  3.893      0.073 3.820      3.818      3.823             3.111        10.976 +0.000 (-0.006, +0.007) +0.000 (-0.000, +0.000) +0.000 (-0.006, +0.007)
+         pooled  3.893      0.073 3.820      3.820      3.820             3.114        10.954                     NaN                     NaN                     NaN
+
+== [all] mse-by-window
+          model  window  meetings  total  mean_part    cs
+       two_part       0        32  4.457      0.065 4.392
+       two_part       1        32  6.598      0.091 6.507
+       two_part       2        32  2.378      0.020 2.359
+       two_part       3        32  2.345      0.029 2.317
+       two_part       4        32  3.701      0.159 3.542
+       two_part       5         1  3.185      0.096 3.090
+two_part_sector       0        32  4.455      0.065 4.390
+two_part_sector       1        32  6.606      0.091 6.514
+two_part_sector       2        32  2.379      0.020 2.359
+two_part_sector       3        32  2.348      0.029 2.320
+two_part_sector       4        32  3.699      0.159 3.540
+two_part_sector       5         1  3.193      0.096 3.097
+         pooled       0        32  4.459      0.065 4.394
+         pooled       1        32  6.590      0.091 6.498
+         pooled       2        32  2.376      0.020 2.357
+         pooled       3        32  2.347      0.029 2.319
+         pooled       4        32  3.714      0.159 3.555
+         pooled       5         1  3.177      0.096 3.082
+
+== [all] mse-by-surprise
+          model       surprise  meetings  crisis_meetings  total  mean_part    cs  share_of_error         total_vs_pooled            cs_vs_pooled
+       two_part      tiny <1bp        71                2  3.411      0.090 3.321           0.386 -0.007 (-0.014, -0.001) -0.007 (-0.014, -0.001)
+       two_part  small 1-2.5bp        48                4  3.861      0.057 3.804           0.296 +0.004 (-0.002, +0.010) +0.004 (-0.002, +0.010)
+       two_part medium 2.5-5bp        32                6  3.846      0.040 3.806           0.196 -0.000 (-0.008, +0.006) -0.000 (-0.008, +0.006)
+       two_part    large >=5bp        10                4  7.599      0.134 7.465           0.121 +0.012 (-0.025, +0.064) +0.012 (-0.025, +0.064)
+two_part_sector      tiny <1bp        71                2  3.407      0.090 3.317           0.386 -0.011 (-0.021, -0.002) -0.011 (-0.021, -0.002)
+two_part_sector  small 1-2.5bp        48                4  3.865      0.057 3.808           0.296 +0.009 (+0.001, +0.016) +0.009 (+0.001, +0.016)
+two_part_sector medium 2.5-5bp        32                6  3.853      0.040 3.813           0.197 +0.007 (-0.006, +0.019) +0.007 (-0.006, +0.019)
+two_part_sector    large >=5bp        10                4  7.604      0.134 7.470           0.121 +0.018 (-0.026, +0.077) +0.018 (-0.026, +0.077)
+         pooled      tiny <1bp        71                2  3.418      0.090 3.328           0.387                     NaN                     NaN
+         pooled  small 1-2.5bp        48                4  3.857      0.057 3.800           0.295                     NaN                     NaN
+         pooled medium 2.5-5bp        32                6  3.846      0.040 3.806           0.196                     NaN                     NaN
+         pooled    large >=5bp        10                4  7.587      0.134 7.453           0.121                     NaN                     NaN
+
+== [all] anatomy
+          model  corr_a_b  spearman_a_b  corr_b_beta  corr_b_vol  corr_a_beta  corr_a_vol  corr_b_leverage  corr_b_size  surrogate_r2_b  b_persist_next  b_persist_4  b_sign_flip_next  b_spread
+       two_part     0.404         0.429        0.163       0.039        0.312       0.213           -0.162        0.171           0.621           0.897        0.798             0.109     0.085
+two_part_sector     0.646         0.660        0.260       0.113        0.348       0.251           -0.183        0.130           0.606           0.874        0.795             0.112     0.098
+
+== [all] b-grades
+          model    meetings  rank_ic            raw        minus_a        a_and_b         a_coef ctrl_beta_shock ctrl_beta_market beta_market_coef
+       two_part         161    0.028 -0.29 (t -0.4) -0.12 (t -0.2) -0.13 (t -0.2) +1.21 (t +2.1)  -0.28 (t -0.4)   +0.23 (t +0.4)   +1.58 (t +4.1)
+       two_part          42    0.033 -0.46 (t -0.6) -0.29 (t -0.4) -0.22 (t -0.3) +1.32 (t +1.5)  -0.59 (t -0.9)   -0.15 (t -0.2)   +0.97 (t +1.8)
+two_part_sector         161    0.017 -0.48 (t -0.7) -0.28 (t -0.4) -0.33 (t -0.5) +0.75 (t +1.8)  -0.46 (t -0.7)   +0.04 (t +0.1)   +1.58 (t +4.1)
+two_part_sector          42    0.011 -0.53 (t -0.8) -0.35 (t -0.5) -0.45 (t -0.7) +0.50 (t +0.9)  -0.70 (t -1.0)   -0.24 (t -0.4)   +0.95 (t +1.8)
+         pooled         all      NaN            NaN            NaN            NaN            NaN             NaN              NaN              NaN
+         pooled large_shock      NaN            NaN            NaN            NaN            NaN             NaN              NaN              NaN

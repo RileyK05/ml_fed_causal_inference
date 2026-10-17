@@ -1,0 +1,59 @@
+{
+  "question": "Q3",
+  "question_key": "q3_susceptibility",
+  "name": "twopart-top1500-pooled",
+  "run_id": "20261015-201124_twopart-top1500-pooled",
+  "role": "exploratory",
+  "created": "2026-10-15T20:11:24",
+  "params": {
+    "arm": "pooled",
+    "seeds": [
+      3,
+      4,
+      5
+    ],
+    "min_train": 60,
+    "test_size": 16,
+    "through": "2009-03-18",
+    "lambda_mean": 0.05,
+    "members": 3,
+    "universe": "top1500"
+  },
+  "metrics": {
+    "n_seeds": 3,
+    "n_test_meetings": 60,
+    "mse_per_meeting": 9.019411844019835,
+    "mse_per_meeting_std": 0.0,
+    "centered_mse": 6.8034926473250605,
+    "centered_mse_std": 1.0877919644084146e-15,
+    "rank_ic": NaN,
+    "rank_ic_std": 0.0,
+    "rank_ic_defined_frac": 0.0,
+    "rank_ic_defined_frac_std": 0.0,
+    "b_slope": 0.8355389696041787,
+    "b_se": 0.5470984513176378,
+    "b_t": 1.5272186707746251
+  },
+  "datasets": {
+    "crsp_daily_top1500": "86eea7e4ba34",
+    "sp500_members": "766f0d47f931",
+    "ff_factors_daily": "86bd2cd117b1",
+    "ccm_link_top1500": "47278ea6b843",
+    "comp_fundq_top1500": "80c7d1132357",
+    "comp_gics_top1500": "66f356efd35e",
+    "usmpd_statements": "8494c70a7e8b",
+    "mps_surprises": "c5b7d50b768c",
+    "treasury_1y": "58fc38308746"
+  },
+  "tables": [
+    "predictions",
+    "folds",
+    "curves"
+  ],
+  "figures": [],
+  "notes": "",
+  "env": {
+    "python": "3.11.10",
+    "pandas": "3.0.6"
+  }
+}

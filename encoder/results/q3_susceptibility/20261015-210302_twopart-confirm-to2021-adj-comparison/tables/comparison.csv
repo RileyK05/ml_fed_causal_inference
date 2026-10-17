@@ -1,0 +1,4 @@
+arm,run_id,path,mse,rank_ic,b_slope,b_se,b_t
+two_part,20261015-205222_twopart-confirm-to2021-adj-two-part,/root/fed/encoder/results/q3_susceptibility/20261015-205222_twopart-confirm-to2021-adj-two-part,3.891375134632142,0.02767011959813086,-0.29387373498027997,0.7382495914194068,-0.39806826633694326
+two_part_sector,20261015-210258_twopart-confirm-to2021-adj-two-part-sector,/root/fed/encoder/results/q3_susceptibility/20261015-210258_twopart-confirm-to2021-adj-two-part-sector,3.8929121186009445,0.017413611649112228,-0.476763308991719,0.651696738438102,-0.7315723416605711
+pooled,20261015-210301_twopart-confirm-to2021-adj-pooled,/root/fed/encoder/results/q3_susceptibility/20261015-210301_twopart-confirm-to2021-adj-pooled,3.892697653523745,,,,

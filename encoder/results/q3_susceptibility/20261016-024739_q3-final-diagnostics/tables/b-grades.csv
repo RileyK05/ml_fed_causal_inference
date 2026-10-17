@@ -1,0 +1,5 @@
+model,meetings,rank_ic,raw,minus_a,a_and_b,a_coef,ctrl_beta_shock,ctrl_beta_market,beta_market_coef
+two_part,32,0.10893016186157563,-0.09 (t -0.1),+0.43 (t +0.3),+0.58 (t +0.5),+1.28 (t +2.5),+0.86 (t +1.2),+0.06 (t +0.1),+0.68 (t +4.0)
+two_part,10,-0.02612359764126596,+0.39 (t +0.3),+0.91 (t +0.7),+0.40 (t +0.3),+0.05 (t +0.0),+1.04 (t +1.4),+0.61 (t +0.7),+0.74 (t +2.6)
+pooled,all,,,,,,,,
+pooled,large_shock,,,,,,,,

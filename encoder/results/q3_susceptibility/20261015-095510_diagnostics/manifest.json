@@ -1,0 +1,39 @@
+{
+  "question": "Q3",
+  "question_key": "q3_susceptibility",
+  "name": "diagnostics",
+  "run_id": "20261015-095510_diagnostics",
+  "role": "exploratory",
+  "created": "2026-10-15T09:55:10",
+  "params": {
+    "runs": {
+      "pooled": "encoder/results/q3_susceptibility/20261015-134549_decouple-exp-pooled",
+      "scratch": "encoder/results/q3_susceptibility/20261015-133023_decouple-exp-tx-scratch",
+      "scratch_old": "encoder/results/q3_susceptibility/20261015-033807_inputs-exp-tx-scratch",
+      "cross_firm_loss": "encoder/results/q3_susceptibility/20261015-133436_decouple-exp-tx-cross-firm-loss",
+      "centered_a": "encoder/results/q3_susceptibility/20261015-134106_decouple-exp-tx-centered-a",
+      "centered_a_cross_firm": "encoder/results/q3_susceptibility/20261015-134547_decouple-exp-tx-centered-a-cross-firm"
+    },
+    "large_shock": 0.25,
+    "n_boot": 10000,
+    "references": [
+      "pooled",
+      "scratch"
+    ]
+  },
+  "metrics": {},
+  "datasets": {},
+  "tables": [
+    "mse-split",
+    "mse-by-window",
+    "mse-by-surprise",
+    "anatomy",
+    "b-grades"
+  ],
+  "figures": [],
+  "notes": "No fitting: computed from saved predictions.",
+  "env": {
+    "python": "3.12.10",
+    "pandas": "3.0.6"
+  }
+}

@@ -1,0 +1,53 @@
+{
+  "question": "Q3",
+  "question_key": "q3_susceptibility",
+  "name": "v2-gates",
+  "run_id": "20261017-120033_v2-gates",
+  "role": "exploratory",
+  "created": "2026-10-17T12:00:33",
+  "params": {
+    "through": "2021-12-31",
+    "universe": "top1500",
+    "large": 0.25,
+    "p_pass": 0.01,
+    "windows": [
+      "day 0",
+      "days 0-2"
+    ],
+    "regimes": [
+      "high_vol",
+      "drawdown",
+      "easing",
+      "tightening",
+      "zlb"
+    ],
+    "traits": [
+      "sector",
+      "credit rating",
+      "free cash flow",
+      "funding gap",
+      "debt maturity",
+      "growth vs value",
+      "size",
+      "rate beta (63d)",
+      "value beta (63d)"
+    ]
+  },
+  "metrics": {
+    "G1_passing": 4,
+    "G2_passing": 1,
+    "G3_passing": 0
+  },
+  "datasets": {},
+  "tables": [
+    "verdict",
+    "tests",
+    "regime-shares"
+  ],
+  "figures": [],
+  "notes": "Descriptive gates G1-G3 from docs/encoder/q3-v2-plan.md; no model fit.",
+  "env": {
+    "python": "3.12.10",
+    "pandas": "3.0.6"
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "question": "Q3",
+  "question_key": "q3_susceptibility",
+  "name": "v2-sector-oos-to2021-comparison",
+  "run_id": "20261017-120300_v2-sector-oos-to2021-comparison",
+  "role": "exploratory",
+  "created": "2026-10-17T12:03:00",
+  "params": {
+    "through": "2021-12-31",
+    "universe": "sp500"
+  },
+  "metrics": {},
+  "datasets": {},
+  "tables": [
+    "comparison"
+  ],
+  "figures": [],
+  "notes": "",
+  "env": {
+    "python": "3.12.10",
+    "pandas": "3.0.6"
+  }
+}

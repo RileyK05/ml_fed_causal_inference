@@ -1,0 +1,56 @@
+       arm                                     run_id                                                                                   path      mse  rank_ic  b_slope    b_se      b_t
+tx_scratch 20261015-161051_twopart-confirm-tx-scratch /root/fed/encoder/results/q3_susceptibility/20261015-161051_twopart-confirm-tx-scratch 8.670321 0.082956 1.307766 1.32305 0.988447
+     arm                                   run_id                                                                                 path     mse  rank_ic  b_slope     b_se      b_t
+two_part 20261015-163137_twopart-confirm-two-part /root/fed/encoder/results/q3_susceptibility/20261015-163137_twopart-confirm-two-part 8.53241 0.105911  2.74319 4.727875 0.580216
+   arm                                 run_id                                                                               path      mse  rank_ic  b_slope  b_se  b_t
+pooled 20261015-163140_twopart-confirm-pooled /root/fed/encoder/results/q3_susceptibility/20261015-163140_twopart-confirm-pooled 8.586972      NaN      NaN   NaN  NaN
+
+== mse-split
+   model  total  mean_part    cs  cs_a_only  cs_b_only  total_win0_2  total_win3         total_vs_pooled     mean_part_vs_pooled            cs_vs_pooled        total_vs_scratch    mean_part_vs_scratch           cs_vs_scratch
+ scratch  8.670      2.557 6.113      6.115      6.108         4.873      23.861 +0.083 (-0.101, +0.274) +0.080 (-0.070, +0.241) +0.003 (-0.042, +0.050)                     NaN                     NaN                     NaN
+two_part  8.532      2.477 6.056      6.061      6.105         4.769      23.587 -0.055 (-0.102, -0.010) +0.000 (-0.000, +0.000) -0.055 (-0.102, -0.010) -0.138 (-0.329, +0.041) -0.080 (-0.241, +0.070) -0.058 (-0.102, -0.016)
+  pooled  8.587      2.477 6.110      6.110      6.110         4.798      23.742                     NaN                     NaN                     NaN -0.083 (-0.274, +0.101) -0.080 (-0.241, +0.070) -0.003 (-0.050, +0.042)
+
+== mse-by-window
+   model  window  meetings  total  mean_part     cs
+ scratch       0        16  8.023      1.541  6.482
+ scratch       1        16  3.420      0.828  2.593
+ scratch       2        16  3.175      0.719  2.456
+ scratch       3        12 23.861      8.669 15.191
+two_part       0        16  7.928      1.508  6.420
+two_part       1        16  3.092      0.579  2.513
+two_part       2        16  3.286      0.808  2.479
+two_part       3        12 23.587      8.525 15.062
+  pooled       0        16  8.016      1.508  6.508
+  pooled       1        16  3.083      0.579  2.504
+  pooled       2        16  3.296      0.808  2.488
+  pooled       3        12 23.742      8.525 15.217
+
+== mse-by-surprise
+   model       surprise  meetings  crisis_meetings  total  mean_part    cs  share_of_error         total_vs_pooled            cs_vs_pooled
+ scratch      tiny <1bp        12                1  7.734      2.143 5.591           0.178 -0.131 (-0.354, +0.032) -0.032 (-0.099, +0.041)
+ scratch  small 1-2.5bp        19                3  7.720      1.606 6.114           0.282 +0.049 (-0.221, +0.364) +0.068 (-0.013, +0.168)
+ scratch medium 2.5-5bp        20                5  7.334      2.250 5.084           0.282 +0.050 (-0.270, +0.358) -0.027 (-0.108, +0.039)
+ scratch    large >=5bp         9                3 14.895      5.800 9.095           0.258 +0.516 (-0.202, +1.252) -0.023 (-0.152, +0.098)
+two_part      tiny <1bp        12                1  7.764      2.242 5.521           0.182 -0.101 (-0.193, -0.027) -0.101 (-0.193, -0.027)
+two_part  small 1-2.5bp        19                3  7.678      1.625 6.053           0.285 +0.007 (-0.062, +0.076) +0.007 (-0.062, +0.076)
+two_part medium 2.5-5bp        20                5  7.232      2.174 5.058           0.283 -0.053 (-0.105, -0.005) -0.053 (-0.105, -0.005)
+two_part    large >=5bp         9                3 14.252      5.261 8.991           0.251 -0.127 (-0.344, +0.059) -0.127 (-0.344, +0.059)
+  pooled      tiny <1bp        12                1  7.865      2.242 5.623           0.183                     NaN                     NaN
+  pooled  small 1-2.5bp        19                3  7.670      1.625 6.046           0.283                     NaN                     NaN
+  pooled medium 2.5-5bp        20                5  7.285      2.174 5.110           0.283                     NaN                     NaN
+  pooled    large >=5bp         9                3 14.378      5.261 9.118           0.251                     NaN                     NaN
+
+== anatomy
+   model  corr_a_b  spearman_a_b  corr_b_beta  corr_b_vol  corr_a_beta  corr_a_vol  corr_b_leverage  corr_b_size  surrogate_r2_b  b_persist_next  b_persist_4  b_sign_flip_next  b_spread
+ scratch    -0.301        -0.334       -0.084       0.037        0.607       0.426            0.023       -0.009           0.444           0.936        0.815             0.083     0.123
+two_part     0.081        -0.048        0.001       0.019        0.626       0.451           -0.157        0.070           0.530           0.919        0.819             0.113     0.047
+
+== b-grades
+   model    meetings  rank_ic            raw        minus_a        a_and_b         a_coef ctrl_beta_shock ctrl_beta_market beta_market_coef
+ scratch          60    0.083 +1.31 (t +1.0) +1.29 (t +1.0) +1.31 (t +1.0) +0.41 (t +1.6)  +0.77 (t +0.7)   +0.44 (t +0.7)   +0.92 (t +9.3)
+ scratch          29    0.091 +1.26 (t +0.9) +1.27 (t +0.9) +1.27 (t +0.9) +0.70 (t +1.6)  +0.90 (t +0.8)   +0.68 (t +1.2)  +0.86 (t +12.9)
+two_part          60    0.106 +2.74 (t +0.6) +2.82 (t +0.6) +2.93 (t +0.7) +1.62 (t +3.3)  +2.01 (t +0.5)   +1.14 (t +0.7)   +0.92 (t +9.2)
+two_part          29    0.123 +1.96 (t +0.4) +2.19 (t +0.5) +2.48 (t +0.6) +1.99 (t +2.9)  +1.60 (t +0.4)   +1.47 (t +0.8)  +0.86 (t +11.6)
+  pooled         all      NaN            NaN            NaN            NaN            NaN             NaN              NaN              NaN
+  pooled large_shock      NaN            NaN            NaN            NaN            NaN             NaN              NaN              NaN

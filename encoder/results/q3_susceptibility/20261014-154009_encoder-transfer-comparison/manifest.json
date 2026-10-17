@@ -1,0 +1,28 @@
+{
+  "question": "Q3",
+  "question_key": "q3_susceptibility",
+  "name": "encoder-transfer-comparison",
+  "run_id": "20261014-154009_encoder-transfer-comparison",
+  "role": "exploratory",
+  "created": "2026-10-14T15:40:09",
+  "params": {
+    "through": "2009-03-18",
+    "checkpoint_digest": "fca52c81a27857222b3c1e7b5e2b1478560cecea117224116e945972c95bf338",
+    "runs": {
+      "tx_scratch": "20261014-153152_tx-scratch",
+      "tx_pre_full": "20261014-153526_tx-pre-full",
+      "tx_masked_full": "20261014-154006_tx-masked-full"
+    }
+  },
+  "metrics": {},
+  "datasets": {},
+  "tables": [
+    "comparison"
+  ],
+  "figures": [],
+  "notes": "",
+  "env": {
+    "python": "3.11.10",
+    "pandas": "3.0.6"
+  }
+}

@@ -1,0 +1,47 @@
+{
+  "question": "Q3",
+  "question_key": "q3_susceptibility",
+  "name": "v2-ablation-combined-diagnostics",
+  "run_id": "20261017-151459_v2-ablation-combined-diagnostics",
+  "role": "exploratory",
+  "created": "2026-10-17T15:14:59",
+  "params": {
+    "runs": {
+      "capm_two_shock": "C:\\Users\\moomi\\personal_projects\\ml_fed_causal_inference\\encoder\\results\\q3_susceptibility\\20261017-190709_v2-ablation-to2021-capm-two-shock",
+      "capm_pooled": "C:\\Users\\moomi\\personal_projects\\ml_fed_causal_inference\\encoder\\results\\q3_susceptibility\\20261017-190717_v2-ablation-to2021-capm-pooled",
+      "pooled": "C:\\Users\\moomi\\personal_projects\\ml_fed_causal_inference\\encoder\\results\\q3_susceptibility\\20261017-190722_v2-ablation-to2021-pooled",
+      "capm_target_slope": "C:\\Users\\moomi\\personal_projects\\ml_fed_causal_inference\\encoder\\results\\q3_susceptibility\\20261017-190731_v2-ablation-to2021-capm-target-slope",
+      "v1_two_part": "C:\\Users\\moomi\\personal_projects\\ml_fed_causal_inference\\encoder\\results\\q3_susceptibility\\20261017-163404_v2-ablation-to2021-v1-two-part",
+      "v2_capm_base": "C:\\Users\\moomi\\personal_projects\\ml_fed_causal_inference\\encoder\\results\\q3_susceptibility\\20261017-175602_v2-ablation-to2021-v2-capm-base",
+      "v2_macro_hist": "C:\\Users\\moomi\\personal_projects\\ml_fed_causal_inference\\encoder\\results\\q3_susceptibility\\20261017-190700_v2-ablation-to2021-v2-macro-hist",
+      "v2_regime": "C:\\Users\\moomi\\personal_projects\\ml_fed_causal_inference\\encoder\\results\\q3_susceptibility\\20261017-174149_v2-ablation-to2021-v2-regime",
+      "v2_policy_info": "C:\\Users\\moomi\\personal_projects\\ml_fed_causal_inference\\encoder\\results\\q3_susceptibility\\20261017-184255_v2-ablation-to2021-v2-policy-info",
+      "v2_target_slope": "C:\\Users\\moomi\\personal_projects\\ml_fed_causal_inference\\encoder\\results\\q3_susceptibility\\20261017-174559_v2-ablation-to2021-v2-target-slope",
+      "v2_shock_weighted": "C:\\Users\\moomi\\personal_projects\\ml_fed_causal_inference\\encoder\\results\\q3_susceptibility\\20261017-185330_v2-ablation-to2021-v2-shock-weighted",
+      "v2_b_only": "C:\\Users\\moomi\\personal_projects\\ml_fed_causal_inference\\encoder\\results\\q3_susceptibility\\20261017-175219_v2-ablation-to2021-v2-b-only"
+    },
+    "large_shock": 0.25,
+    "n_boot": 10000,
+    "references": [
+      "capm_two_shock",
+      "capm_pooled",
+      "pooled"
+    ],
+    "rows_kept": null
+  },
+  "metrics": {},
+  "datasets": {},
+  "tables": [
+    "mse-split",
+    "mse-by-window",
+    "mse-by-surprise",
+    "anatomy",
+    "b-grades"
+  ],
+  "figures": [],
+  "notes": "No fitting: computed from saved predictions.",
+  "env": {
+    "python": "3.12.10",
+    "pandas": "3.0.6"
+  }
+}

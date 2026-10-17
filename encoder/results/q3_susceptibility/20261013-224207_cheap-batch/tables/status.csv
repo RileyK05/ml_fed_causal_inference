@@ -1,0 +1,33 @@
+check,title,kind,status,seconds,run_id
+A1,Shock distribution by era and direction,descriptive,ok,7.1,20261013-223703_cheap-a1
+A2,Shock concentration by training fold,descriptive,ok,0.0,20261013-223703_cheap-a2
+A3,Market-rate co-movement on ordinary days,descriptive,ok,0.0,20261013-223704_cheap-a3
+A4,Meeting-wide vs within-meeting return variation,descriptive,ok,0.0,20261013-223704_cheap-a4
+A5,Ordinary-day corpus vs Fed-day rows,descriptive,ok,0.5,20261013-223705_cheap-a5
+A6,Timing and label audit,descriptive,ok,0.1,20261013-223705_cheap-a6
+A7,Pre-training window and label overlap audit,descriptive,ok,0.2,20261013-223706_cheap-a7
+B1,Encoder gradients through a vs through b,gradient,ok,4.9,20261013-223711_cheap-b1
+B2,Agreement of the a and b gradient paths,gradient,ok,0.8,20261013-223712_cheap-b2
+B3,Shock-unit rescaling (10bp vs 1bp),gradient,ok,1.6,20261013-223714_cheap-b3
+B4,Backward-only dial and variance weighting,gradient,ok,3.2,20261013-223717_cheap-b4
+C1,"Does the shock help, and does state-dependent b help?",fitted,ok,11.2,20261013-223729_cheap-c1
+C2,Ordinary-day rate model vs market-plus-rate model,fitted,ok,1.6,20261013-223731_cheap-c2
+C3,Future-loading label reliability,fitted,ok,20.0,20261013-223751_cheap-c3
+C4,Leave-one-large-meeting-out,fitted,ok,2.3,20261013-223754_cheap-c4
+C5,Global shock centering,fitted,ok,2.1,20261013-223756_cheap-c5
+R1,Power on real noise (planted b heterogeneity),fitted,ok,105.9,20261013-223943_cheap-r1
+R2,Firm-level b dispersion vs sampling noise,fitted,ok,0.3,20261013-223943_cheap-r2
+R3,Which state features carry b,fitted,ok,1.4,20261013-223945_cheap-r3
+R4,Ordinary-day rate loading predicts Fed-day response?,fitted,ok,1.9,20261013-223947_cheap-r4
+R5,Persistence of factor loadings (past -> future),fitted,ok,15.1,20261013-224003_cheap-r5
+R6,Earnings-day reaction size vs Fed-day reaction size,fitted,ok,0.3,20261013-224003_cheap-r6
+R7,Which ordinary days carry transferable rate sensitivity,fitted,ok,1.2,20261013-224005_cheap-r7
+R8,Stability of sensitivity across time and regimes,fitted,ok,0.5,20261013-224005_cheap-r8
+R9,Placebo date: the trading day before each meeting,fitted,ok,1.3,20261013-224007_cheap-r9
+R10,Placebo shock: shuffled s across meetings,fitted,ok,90.9,20261013-224138_cheap-r10
+R11,Residual dispersion vs surprise size and firm state,fitted,ok,0.5,20261013-224139_cheap-r11
+S1,"Synthetic: varying a, constant b (false heterogeneity?)",synthetic,ok,3.0,20261013-224143_cheap-s1
+S2,"Synthetic: varying b, strong baseline, mostly quiet shocks",synthetic,ok,5.1,20261013-224148_cheap-s2
+S3,Synthetic: shared meeting noise,synthetic,ok,5.2,20261013-224153_cheap-s3
+S4,Synthetic: helpful vs misleading ordinary-day exposure,synthetic,ok,9.4,20261013-224202_cheap-s4
+S5,Synthetic: shock-dependent noise and saturating response,synthetic,ok,4.0,20261013-224207_cheap-s5

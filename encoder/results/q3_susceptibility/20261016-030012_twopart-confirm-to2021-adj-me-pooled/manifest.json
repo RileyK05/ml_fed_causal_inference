@@ -1,0 +1,62 @@
+{
+  "question": "Q3",
+  "question_key": "q3_susceptibility",
+  "name": "twopart-confirm-to2021-adj-me-pooled",
+  "run_id": "20261016-030012_twopart-confirm-to2021-adj-me-pooled",
+  "role": "exploratory",
+  "created": "2026-10-16T03:00:12",
+  "params": {
+    "arm": "pooled",
+    "seeds": [
+      3,
+      4,
+      5
+    ],
+    "min_train": 60,
+    "test_size": 32,
+    "through": "2021-12-31",
+    "lambda_mean": 0.05,
+    "members": 1,
+    "universe": "sp500",
+    "sector": false,
+    "target": "market_adjusted",
+    "shock": "ME"
+  },
+  "metrics": {
+    "n_seeds": 3,
+    "n_test_meetings": 161,
+    "mse_per_meeting": 3.8927170503885598,
+    "mse_per_meeting_std": 5.438959822042073e-16,
+    "centered_mse": 3.819930683400121,
+    "centered_mse_std": 5.438959822042073e-16,
+    "rank_ic": NaN,
+    "rank_ic_std": 0.0,
+    "rank_ic_defined_frac": 0.0,
+    "rank_ic_defined_frac_std": 0.0,
+    "b_slope": NaN,
+    "b_se": NaN,
+    "b_t": NaN
+  },
+  "datasets": {
+    "crsp_daily": "56a316e2b455",
+    "sp500_members": "766f0d47f931",
+    "ff_factors_daily": "86bd2cd117b1",
+    "ccm_link": "39f69dc59797",
+    "comp_fundq": "60eaa21d9aab",
+    "comp_gics": "644f6f0f534a",
+    "usmpd_statements": "8494c70a7e8b",
+    "mps_surprises": "c5b7d50b768c",
+    "treasury_1y": "58fc38308746"
+  },
+  "tables": [
+    "predictions",
+    "folds",
+    "curves"
+  ],
+  "figures": [],
+  "notes": "",
+  "env": {
+    "python": "3.11.10",
+    "pandas": "3.0.6"
+  }
+}

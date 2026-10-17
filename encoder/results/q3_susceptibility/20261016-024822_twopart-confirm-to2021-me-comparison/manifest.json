@@ -1,0 +1,28 @@
+{
+  "question": "Q3",
+  "question_key": "q3_susceptibility",
+  "name": "twopart-confirm-to2021-me-comparison",
+  "run_id": "20261016-024822_twopart-confirm-to2021-me-comparison",
+  "role": "exploratory",
+  "created": "2026-10-16T02:48:22",
+  "params": {
+    "through": "2021-12-31",
+    "lambda_mean": 0.05,
+    "members": 1,
+    "universe": "sp500",
+    "sector": false,
+    "target": "raw",
+    "shock": "ME"
+  },
+  "metrics": {},
+  "datasets": {},
+  "tables": [
+    "comparison"
+  ],
+  "figures": [],
+  "notes": "",
+  "env": {
+    "python": "3.11.10",
+    "pandas": "3.0.6"
+  }
+}

@@ -1,0 +1,11 @@
+cutoff,cutoff_date,label,windows,label_crosses_cutoff,usable,val_windows_history_overlapping_train,train_windows_label_reaching_val
+inner_validation,2003-05-06,history_only,407193,0,407193,42207,0
+inner_validation,2003-05-06,same_day_response,407193,0,407193,42207,841
+inner_validation,2003-05-06,future_21d,407193,3357,403836,42210,4206
+inner_validation,2003-05-06,future_63d,407193,10056,397137,42211,10983
+inner_validation,2003-05-06,future_126d,407193,20978,386215,42215,22207
+outer_test,2009-04-29,history_only,654923,0,654923,40847,0
+outer_test,2009-04-29,same_day_response,654923,0,654923,40847,824
+outer_test,2009-04-29,future_21d,654923,3169,651754,40897,4121
+outer_test,2009-04-29,future_63d,654923,9524,645399,40992,10801
+outer_test,2009-04-29,future_126d,654923,19858,635065,41181,21739

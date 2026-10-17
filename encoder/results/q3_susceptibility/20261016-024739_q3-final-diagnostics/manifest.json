@@ -1,0 +1,35 @@
+{
+  "question": "Q3",
+  "question_key": "q3_susceptibility",
+  "name": "q3-final-diagnostics",
+  "run_id": "20261016-024739_q3-final-diagnostics",
+  "role": "exploratory",
+  "created": "2026-10-16T02:47:39",
+  "params": {
+    "runs": {
+      "two_part": "/root/fed/encoder/results/q3_susceptibility/20261016-024736_q3-final-two-part",
+      "pooled": "/root/fed/encoder/results/q3_susceptibility/20261016-024737_q3-final-pooled"
+    },
+    "large_shock": 0.25,
+    "n_boot": 10000,
+    "references": [
+      "pooled"
+    ],
+    "rows_kept": null
+  },
+  "metrics": {},
+  "datasets": {},
+  "tables": [
+    "mse-split",
+    "mse-by-window",
+    "mse-by-surprise",
+    "anatomy",
+    "b-grades"
+  ],
+  "figures": [],
+  "notes": "No fitting: computed from saved predictions.",
+  "env": {
+    "python": "3.11.10",
+    "pandas": "3.0.6"
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "question": "Q3",
+  "question_key": "q3_susceptibility",
+  "name": "v2-ablation-to2021-comparison",
+  "run_id": "20261017-190733_v2-ablation-to2021-comparison",
+  "role": "exploratory",
+  "created": "2026-10-17T19:07:33",
+  "params": {
+    "through": "2021-12-31",
+    "members": 3
+  },
+  "metrics": {},
+  "datasets": {},
+  "tables": [
+    "comparison"
+  ],
+  "figures": [],
+  "notes": "",
+  "env": {
+    "python": "3.11.10",
+    "pandas": "3.0.6"
+  }
+}

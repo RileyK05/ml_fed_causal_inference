@@ -1,0 +1,61 @@
+{
+  "question": "Q3",
+  "question_key": "q3_susceptibility",
+  "name": "cheap-S3",
+  "run_id": "20261013-224153_cheap-s3",
+  "role": "exploratory",
+  "created": "2026-10-13T22:41:53",
+  "params": {
+    "check": "S3",
+    "title": "Synthetic: shared meeting noise",
+    "kind": "synthetic",
+    "data": "simulated",
+    "config": {
+      "dev_meetings": 120,
+      "inner_min_train": 72,
+      "inner_test": 12,
+      "outer_min_train": 120,
+      "outer_test": 16,
+      "val_meetings": 18,
+      "ridge_alpha": 1.0,
+      "n_boot": 2000,
+      "n_perm": 200,
+      "window": 63,
+      "min_obs": 40,
+      "sample_every": 21,
+      "horizons": [
+        21,
+        63,
+        126
+      ],
+      "r1_effects": [
+        0.0,
+        0.25,
+        0.5,
+        1.0,
+        2.0
+      ],
+      "r2_min_meetings": 80,
+      "r8_min_meetings": 30,
+      "synthetic_firms": 150,
+      "synthetic_meetings": 160,
+      "seed": 0
+    }
+  },
+  "metrics": {
+    "b_corr_common0.0": 0.9401013189671794,
+    "b_corr_common1.0": 0.7150074982348398,
+    "b_corr_common2.0": 0.30255361922041357,
+    "b_corr_common4.0": 0.05702388526509724
+  },
+  "datasets": {},
+  "tables": [
+    "by-noise"
+  ],
+  "figures": [],
+  "notes": "A residual shared by every firm in a meeting, at increasing size. Per-meeting MSE rises, but within-meeting b recovery should hold if the shared part does not correlate with firm state.",
+  "env": {
+    "python": "3.12.10",
+    "pandas": "3.0.6"
+  }
+}

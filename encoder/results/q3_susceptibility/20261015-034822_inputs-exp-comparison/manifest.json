@@ -1,0 +1,22 @@
+{
+  "question": "Q3",
+  "question_key": "q3_susceptibility",
+  "name": "inputs-exp-comparison",
+  "run_id": "20261015-034822_inputs-exp-comparison",
+  "role": "exploratory",
+  "created": "2026-10-15T03:48:22",
+  "params": {
+    "through": "2009-03-18"
+  },
+  "metrics": {},
+  "datasets": {},
+  "tables": [
+    "comparison"
+  ],
+  "figures": [],
+  "notes": "",
+  "env": {
+    "python": "3.11.10",
+    "pandas": "3.0.6"
+  }
+}

@@ -1,0 +1,70 @@
+{
+  "question": "Q3",
+  "question_key": "q3_susceptibility",
+  "name": "cheap-A3",
+  "run_id": "20261013-223616_cheap-a3",
+  "role": "exploratory",
+  "created": "2026-10-13T22:36:16",
+  "params": {
+    "check": "A3",
+    "title": "Market-rate co-movement on ordinary days",
+    "kind": "descriptive",
+    "data": "real",
+    "config": {
+      "dev_meetings": 120,
+      "inner_min_train": 72,
+      "inner_test": 12,
+      "outer_min_train": 120,
+      "outer_test": 16,
+      "val_meetings": 18,
+      "ridge_alpha": 1.0,
+      "n_boot": 2000,
+      "n_perm": 200,
+      "window": 63,
+      "min_obs": 40,
+      "sample_every": 21,
+      "horizons": [
+        21,
+        63,
+        126
+      ],
+      "r1_effects": [
+        0.0,
+        0.25,
+        0.5,
+        1.0,
+        2.0
+      ],
+      "r2_min_meetings": 80,
+      "r8_min_meetings": 30,
+      "synthetic_firms": 150,
+      "synthetic_meetings": 160,
+      "seed": 0
+    }
+  },
+  "metrics": {
+    "corr_mkt_dy_all": 0.20390152950193371,
+    "rolling63_corr_positive_share": 0.6957335829878294
+  },
+  "datasets": {
+    "crsp_daily": "56a316e2b455",
+    "sp500_members": "766f0d47f931",
+    "ff_factors_daily": "86bd2cd117b1",
+    "ccm_link": "39f69dc59797",
+    "comp_fundq": "60eaa21d9aab",
+    "comp_gics": "644f6f0f534a",
+    "usmpd_statements": "8494c70a7e8b",
+    "mps_surprises": "c5b7d50b768c",
+    "treasury_1y": "58fc38308746",
+    "bls_cpi_release_dates": "dc4dca5e9307"
+  },
+  "tables": [
+    "by-era"
+  ],
+  "figures": [],
+  "notes": "Correlation of daily market return and 1-year yield change; the sign flips across eras.",
+  "env": {
+    "python": "3.12.10",
+    "pandas": "3.0.6"
+  }
+}

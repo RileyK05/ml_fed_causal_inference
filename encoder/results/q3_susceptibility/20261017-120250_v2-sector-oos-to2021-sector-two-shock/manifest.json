@@ -1,0 +1,55 @@
+{
+  "question": "Q3",
+  "question_key": "q3_susceptibility",
+  "name": "v2-sector-oos-to2021-sector_two_shock",
+  "run_id": "20261017-120250_v2-sector-oos-to2021-sector-two-shock",
+  "role": "exploratory",
+  "created": "2026-10-17T12:02:50",
+  "params": {
+    "arm": "sector_two_shock",
+    "seeds": [
+      0
+    ],
+    "min_train": 60,
+    "test_size": 16,
+    "through": "2021-12-31",
+    "universe": "sp500"
+  },
+  "metrics": {
+    "n_seeds": 1,
+    "n_test_meetings": 161,
+    "mse_per_meeting": 5.992006147666627,
+    "mse_per_meeting_std": 0.0,
+    "centered_mse": 4.18237523038889,
+    "centered_mse_std": 0.0,
+    "rank_ic": 0.04884380688662796,
+    "rank_ic_std": 0.0,
+    "rank_ic_defined_frac": 1.0,
+    "rank_ic_defined_frac_std": 0.0,
+    "b_slope": 0.19057977801963685,
+    "b_se": 0.2244122156549235,
+    "b_t": 0.8492397682695203
+  },
+  "datasets": {
+    "crsp_daily": "56a316e2b455",
+    "sp500_members": "766f0d47f931",
+    "ff_factors_daily": "86bd2cd117b1",
+    "ccm_link": "39f69dc59797",
+    "comp_fundq": "60eaa21d9aab",
+    "comp_gics": "644f6f0f534a",
+    "usmpd_statements": "8494c70a7e8b",
+    "mps_surprises": "c5b7d50b768c",
+    "treasury_1y": "58fc38308746"
+  },
+  "tables": [
+    "predictions",
+    "folds",
+    "curves"
+  ],
+  "figures": [],
+  "notes": "",
+  "env": {
+    "python": "3.12.10",
+    "pandas": "3.0.6"
+  }
+}

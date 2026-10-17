@@ -1,0 +1,4 @@
+day_set,status,days_in_span,window,centered_gain,ci_low,ci_high
+all_ordinary,ok,3883,63.0,0.0019271670428074085,0.0005051552804090726,0.003670864216688707
+release_days,skipped: fewer than 20 release dates in the development span,0,,,,
+non_release_days,skipped: fewer than 20 release dates in the development span,3883,,,,

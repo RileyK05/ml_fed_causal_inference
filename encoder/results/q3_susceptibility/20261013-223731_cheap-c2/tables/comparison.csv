@@ -1,0 +1,2 @@
+comparison,estimate,se,ci_low,ci_high,n_days
+market_plus_rate - rate_only (per-day MSE),-3.992911894236384,0.43126472127685755,-4.8919286838267855,-3.1905905370700047,534

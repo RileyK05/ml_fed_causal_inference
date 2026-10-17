@@ -1,0 +1,81 @@
+{
+  "question": "Q3",
+  "question_key": "q3_susceptibility",
+  "name": "pretrain-next_return_gaussian",
+  "run_id": "20261014-151845_pretrain-next-return-gaussian",
+  "role": "exploratory",
+  "created": "2026-10-14T15:18:45",
+  "params": {
+    "objective": "next_return_gaussian",
+    "epochs": 30,
+    "lr": 0.001,
+    "seed": 0,
+    "val_frac": 0.1,
+    "batch_size": 256,
+    "dates_per_step": 4,
+    "weight_decay": 0.0001,
+    "patience": 5,
+    "scaler_windows": 4096,
+    "mask_frac": 0.3,
+    "train_eval_dates": 250,
+    "cutoff": "2000-10-03",
+    "available_through": "2000-10-02",
+    "train_target_start": "1993-12-31",
+    "train_target_end": "1999-01-29",
+    "val_target_start": "2000-01-31",
+    "val_target_end": "2000-10-02",
+    "n_train_rows": 1066394,
+    "n_val_rows": 141037,
+    "n_purged_rows": 210168,
+    "n_train_dates": 1241,
+    "n_val_dates": 166,
+    "return_units": "percent",
+    "weighting": "equal target dates, equal firms within date",
+    "purge_history": true,
+    "history_overlap": "purged",
+    "excluded_fomc_dates": 279,
+    "device": "cuda",
+    "torch_version": "2.5.1+cu124",
+    "stride": 1,
+    "min_observed": 126,
+    "checkpoint_schema": "fedenc-history-v1",
+    "encoder_config": {
+      "n_channels": 5,
+      "patch_len": 5,
+      "d_model": 64,
+      "n_layers": 3,
+      "n_heads": 4,
+      "dim_feedforward": 256,
+      "dropout": 0.1,
+      "pool": "mean"
+    },
+    "channels": [
+      "ret",
+      "dlogvol",
+      "rvol21",
+      "ret_rel",
+      "beta63"
+    ],
+    "checkpoint_digest": "fca52c81a27857222b3c1e7b5e2b1478560cecea117224116e945972c95bf338"
+  },
+  "metrics": {
+    "best_epoch": 15,
+    "best_val_loss": 3.3458086039927366
+  },
+  "datasets": {
+    "crsp_daily": "56a316e2b455",
+    "ff_factors_daily": "86bd2cd117b1",
+    "usmpd_statements": "8494c70a7e8b"
+  },
+  "tables": [
+    "encoder-state",
+    "history-scaler",
+    "curves"
+  ],
+  "figures": [],
+  "notes": "History-only pretraining. Head discarded. Encoder and history scaler retained. Checkpoint availability includes pretraining validation labels. No Fed sensitivity claim.",
+  "env": {
+    "python": "3.11.10",
+    "pandas": "3.0.6"
+  }
+}

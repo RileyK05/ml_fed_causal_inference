@@ -1,0 +1,12 @@
+check,title,kind,status,seconds,run_id
+A1,Shock distribution by era and direction,descriptive,ok,9.0,20261013-223615_cheap-a1
+A2,Shock concentration by training fold,descriptive,ok,0.0,20261013-223615_cheap-a2
+A3,Market-rate co-movement on ordinary days,descriptive,ok,0.0,20261013-223616_cheap-a3
+A4,Meeting-wide vs within-meeting return variation,descriptive,ok,0.0,20261013-223616_cheap-a4
+A5,Ordinary-day corpus vs Fed-day rows,descriptive,ok,0.5,20261013-223617_cheap-a5
+A6,Timing and label audit,descriptive,ok,0.1,20261013-223617_cheap-a6
+A7,Pre-training window and label overlap audit,descriptive,ok,0.2,20261013-223618_cheap-a7
+B1,Encoder gradients through a vs through b,gradient,ok,5.4,20261013-223623_cheap-b1
+B2,Agreement of the a and b gradient paths,gradient,ok,0.8,20261013-223625_cheap-b2
+B3,Shock-unit rescaling (10bp vs 1bp),gradient,ok,1.5,20261013-223626_cheap-b3
+B4,Backward-only dial and variance weighting,gradient,ok,3.1,20261013-223630_cheap-b4
