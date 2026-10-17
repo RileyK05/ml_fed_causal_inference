@@ -1,0 +1,22 @@
+{
+  "question": "Q3",
+  "question_key": "q3_susceptibility",
+  "name": "v2-betas-to2021-comparison",
+  "run_id": "20261017-190854_v2-betas-to2021-comparison",
+  "role": "exploratory",
+  "created": "2026-10-17T19:08:54",
+  "params": {
+    "through": "2021-12-31"
+  },
+  "metrics": {},
+  "datasets": {},
+  "tables": [
+    "comparison"
+  ],
+  "figures": [],
+  "notes": "",
+  "env": {
+    "python": "3.12.10",
+    "pandas": "3.0.6"
+  }
+}

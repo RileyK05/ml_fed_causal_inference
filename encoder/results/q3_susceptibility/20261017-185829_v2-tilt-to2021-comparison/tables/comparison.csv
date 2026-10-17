@@ -1,0 +1,3 @@
+arm,run_id,path,mse,rank_ic,b_slope,b_se,b_t
+capm_tilt,20261017-185823_v2-tilt-to2021-capm-tilt,C:\Users\moomi\personal_projects\ml_fed_causal_inference\encoder\results\q3_susceptibility\20261017-185823_v2-tilt-to2021-capm-tilt,7.147102762653516,0.039378955784796804,0.9425054826793681,1.5650886090282876,0.6022058286300729
+capm_tilt_vol,20261017-185828_v2-tilt-to2021-capm-tilt-vol,C:\Users\moomi\personal_projects\ml_fed_causal_inference\encoder\results\q3_susceptibility\20261017-185828_v2-tilt-to2021-capm-tilt-vol,7.288957635010207,0.032588417655810185,0.915351726454111,1.5560268048480679,0.588262183917511

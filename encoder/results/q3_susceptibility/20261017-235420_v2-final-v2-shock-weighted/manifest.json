@@ -1,0 +1,59 @@
+{
+  "question": "Q3",
+  "question_key": "q3_susceptibility",
+  "name": "v2-final-v2_shock_weighted",
+  "run_id": "20261017-235420_v2-final-v2-shock-weighted",
+  "role": "robustness",
+  "created": "2026-10-17T23:54:20",
+  "params": {
+    "arm": "v2_shock_weighted",
+    "seeds": [
+      6,
+      7,
+      8
+    ],
+    "min_train": 221,
+    "test_size": 32,
+    "through": "2025-12-31",
+    "dev_end": "2021-12-31",
+    "members": 3,
+    "preregistered": "docs/encoder/v2-results.md#pre-registered-2022-2025-check"
+  },
+  "metrics": {
+    "n_seeds": 3,
+    "n_test_meetings": 32,
+    "mse_per_meeting": 5.709595827074132,
+    "mse_per_meeting_std": 0.0009822187212995847,
+    "centered_mse": 3.9557631791986245,
+    "centered_mse_std": 0.0009822187212994858,
+    "rank_ic": 0.11173516245894381,
+    "rank_ic_std": 0.024875907163853097,
+    "rank_ic_defined_frac": 1.0,
+    "rank_ic_defined_frac_std": 0.0,
+    "b_slope": 0.10916953261077754,
+    "b_se": 0.73784216419581,
+    "b_t": 0.14795783964144116
+  },
+  "datasets": {
+    "crsp_daily": "56a316e2b455",
+    "sp500_members": "766f0d47f931",
+    "ff_factors_daily": "86bd2cd117b1",
+    "ccm_link": "39f69dc59797",
+    "comp_fundq": "60eaa21d9aab",
+    "comp_gics": "644f6f0f534a",
+    "usmpd_statements": "8494c70a7e8b",
+    "mps_surprises": "c5b7d50b768c",
+    "treasury_1y": "58fc38308746"
+  },
+  "tables": [
+    "predictions",
+    "folds",
+    "curves"
+  ],
+  "figures": [],
+  "notes": "",
+  "env": {
+    "python": "3.11.10",
+    "pandas": "3.0.6"
+  }
+}

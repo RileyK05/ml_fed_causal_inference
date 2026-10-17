@@ -182,3 +182,25 @@ locked model and never for v2 (plan option A: a labelled secondary check, weaker
 - **Power:** at the development effect size (t 2.4 on 161 meetings), 32 meetings give an expected
   t of about 1.1. A null is likely even if the effect is real, and would not refute it; a correct
   sign is weak support. Everything is reported whatever the outcome.
+
+### Result (run 2026-10-17, after the pre-registration commit 9d7603c)
+
+32 test meetings, 16,101 firm-meetings. One-sided meeting-bootstrap p-values; 90% ranges.
+
+| Claim | Estimate | t | p | Verdict |
+|---|---|---|---|---|
+| P1: consensus d predicts CAPM's miss (slope > 0) | +1.73 (-0.20, +3.82) | 1.39 | 0.074 | Not significant; same sign and size as development (1.56 / 2.10) |
+| P2: consensus MSE below `capm_pooled` | +0.0026 (-0.014, +0.020) | 0.24 | 0.41 | Not significant |
+| P3: consensus adds beyond `capm_beta_both` | -0.17 (-1.62, +1.40) | -0.18 | 0.59 | No |
+
+Reported without a claim: per-meeting MSE `capm_pooled` 5.725, consensus 5.722, `capm_beta_both`
+5.707 (gain +0.018, p 0.16). Single arms' slopes range from +0.08 to +1.85; three reach p < 0.05
+alone (`v2_capm_base`, `v2_macro_hist`, `v2_shock_weighted`), which with six arms tried is not a
+claim. Hiking-cycle meetings (2022-01 to 2023-07): slope -0.01. Top decile of |d|: 52% right
+direction, 0.15% realized vs 0.17% predicted.
+
+**Reading.** The drift tilt kept its sign and size on unseen meetings but, as the power note
+expected, 32 meetings cannot confirm it (p 0.07). The part that would make it a transformer
+result failed: out of sample the networks add nothing beyond a CAPM with a steadier beta, which
+itself did slightly better than the networks (not significant). The defensible claim is the
+beta-estimation one: on Fed days, a one-year average beta beats the last 63-day beta.
