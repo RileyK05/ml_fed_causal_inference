@@ -3,6 +3,8 @@
 ``pooled`` is one intercept and one shock loading.
 ``capm_pooled`` scales one Fed-day drift and one shock loading by each firm's pre-meeting
 beta: the finance null that firms differ only through beta. Any Q3 model must beat it.
+``capm_two_shock`` does the same with the surprise split into policy and information parts
+(``fedcore.q3.shocks``); ``capm_target_slope`` adds the yield-curve slope change instead.
 ``ridge_interact`` is ridge on features, fundamentals, context, and those columns
 interacted with the shock. ``b_hat`` is the shock-coefficient part on each row.
 ``lgbm`` uses the same columns; ``b_hat`` is the finite difference of the
@@ -114,6 +116,45 @@ class CAPMPooled:
         s = np.asarray(panel.shock, dtype=np.float64)
         a = self.c_ + self.d_ * beta
         b = self.k_ * beta
+        return a + b * s, a, b
+
+
+class CAPMTwoShock:
+    """r = c + beta·(d + k1·s1 + k2·s2), fit by OLS on [1, beta, beta·s1, beta·s2].
+
+    ``kind="policy_info"``: s1, s2 are the policy and information parts of s (one is zero), so
+    ``b_hat = beta·k_policy`` or ``beta·k_info`` by meeting type. ``kind="target_slope"``: s1 = s
+    and s2 is the window change in the 10y-2y spread; the slope response goes into ``a_hat``,
+    so ``b_hat = k1·beta`` stays the sensitivity to s and ``mu = a_hat + b_hat·s`` holds.
+    ``table`` overrides the USMPD meeting table (tests).
+    """
+
+    def __init__(self, kind: str = "policy_info", table=None):
+        self.kind = kind
+        self.table = table
+        self.fit_result = None
+
+    def _parts(self, panel: Q3Panel):
+        from fedcore.q3.shocks import split_shock
+
+        return _beta(panel), split_shock(panel, self.kind, self.table)
+
+    def fit(self, panel: Q3Panel, **kwargs) -> None:
+        del kwargs
+        beta, S = self._parts(panel)
+        design = np.column_stack((np.ones(len(beta)), beta, beta * S[:, 0], beta * S[:, 1]))
+        coef, *_ = np.linalg.lstsq(design, np.asarray(panel.target, dtype=np.float64), rcond=None)
+        self.c_, self.d_, self.k1_, self.k2_ = (float(x) for x in coef)
+
+    def predict(self, panel: Q3Panel):
+        beta, S = self._parts(panel)
+        s = np.asarray(panel.shock, dtype=np.float64)
+        a = self.c_ + self.d_ * beta
+        if self.kind == "policy_info":
+            b = beta * np.where(S[:, 1] != 0.0, self.k2_, self.k1_)
+        else:
+            a = a + self.k2_ * beta * S[:, 1]
+            b = self.k1_ * beta
         return a + b * s, a, b
 
 
@@ -232,6 +273,8 @@ class SummaryNN:
 BASELINES = {
     "pooled": lambda seed: PooledOLS(),
     "capm_pooled": lambda seed: CAPMPooled(),
+    "capm_two_shock": lambda seed: CAPMTwoShock("policy_info"),
+    "capm_target_slope": lambda seed: CAPMTwoShock("target_slope"),
     "ridge_interact": lambda seed: RidgeInteract(seed=seed),
     "lgbm": lambda seed: LGBMBaseline(seed=seed),
     "summary_nn": lambda seed: SummaryNN(seed=seed),

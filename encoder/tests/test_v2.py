@@ -1,0 +1,149 @@
+"""Unit tests for modular Q3 v2 mechanisms (encoder/fedenc/v2.py). Smoke fits only."""
+from __future__ import annotations
+
+import numpy as np
+import pandas as pd
+import pytest
+
+torch = pytest.importorskip("torch")
+
+from fedcore.q3.baselines import CAPMPooled, PooledOLS
+from fedcore.q3.synthetic import make_synthetic_panel
+from fedenc import v2
+from fedenc.encoder_transformer import PatchTransformerEncoder
+
+
+def tiny_encoder(n_channels: int = 5):
+    return PatchTransformerEncoder(
+        n_channels=n_channels, d_model=8, n_layers=1, n_heads=2, dim_feedforward=16, dropout=0.0
+    )
+
+
+@pytest.fixture
+def panel():
+    return make_synthetic_panel(n_firms=6, n_meetings=8, seed=0)
+
+
+@pytest.fixture
+def macro_tables(panel):
+    return v2.make_synthetic_macro_tables(panel, seed=42)
+
+
+def test_v2_config_validation():
+    cfg = v2.V2Config(
+        base="capm",
+        history_macro=True,
+        regime=True,
+        shock_split="policy_info",
+        shock_weight=2.0,
+        b_only=True,
+    )
+    assert cfg.base == "capm"
+    with pytest.raises(ValueError, match="base"):
+        v2.V2Config(base="invalid")
+    with pytest.raises(ValueError, match="shock_split"):
+        v2.V2Config(shock_split="invalid")
+    with pytest.raises(ValueError, match="shock_weight"):
+        v2.V2Config(shock_weight=-1.0)
+    with pytest.raises(ValueError, match="w_max"):
+        v2.V2Config(w_max=0.5)
+
+
+def test_augment_inputs_shapes_and_masks(panel, macro_tables):
+    n = len(panel.target)
+    f0 = panel.fundamentals.shape[1]
+    c0 = panel.context.shape[1]
+
+    # 1. Default config: no change in channel/feature counts, 1D shock
+    aug0 = v2._augment_inputs(panel, v2.V2Config(), macro_tables)
+    assert aug0["history"].shape == (n, 252, 5)
+    assert aug0["fundamentals"].shape == (n, f0)
+    assert aug0["context"].shape == (n, c0)
+    assert aug0["shock_mat"].shape == (n, 1)
+
+    # 2. All switches on: +3 history channels, +2 fundamentals, +4 context, 2D shock
+    cfg_all = v2.V2Config(history_macro=True, regime=True, shock_split="policy_info")
+    aug1 = v2._augment_inputs(panel, cfg_all, macro_tables)
+    assert aug1["history"].shape == (n, 252, 8)
+    assert aug1["fundamentals"].shape == (n, f0 + 2)
+    assert aug1["fundamentals_mask"].shape == (n, f0 + 2)
+    assert aug1["context"].shape == (n, c0 + 4)
+    assert aug1["shock_mat"].shape == (n, 2)
+
+    # Unobserved history days stay NaN across all 8 channels
+    assert np.array_equal(np.isfinite(aug1["history"]).all(axis=-1), panel.history_mask)
+    assert np.array_equal(np.isfinite(aug1["fundamentals"]), aug1["fundamentals_mask"])
+
+    # In policy_info split, s_policy + s_info == s identically, and one of the two is 0 on each row
+    np.testing.assert_allclose(aug1["shock_mat"].sum(axis=1), panel.shock, atol=1e-6)
+    assert np.all((aug1["shock_mat"][:, 0] == 0.0) | (aug1["shock_mat"][:, 1] == 0.0))
+
+    # 3. target_slope split: first column is s, second is slope_shock
+    cfg_ts = v2.V2Config(shock_split="target_slope")
+    aug_ts = v2._augment_inputs(panel, cfg_ts, macro_tables)
+    assert aug_ts["shock_mat"].shape == (n, 2)
+    np.testing.assert_allclose(aug_ts["shock_mat"][:, 0], panel.shock, atol=1e-6)
+
+
+@pytest.mark.parametrize("base", ["pooled", "capm"])
+@pytest.mark.parametrize("shock_split", ["none", "policy_info", "target_slope"])
+@pytest.mark.parametrize("b_only", [False, True])
+def test_v2_two_part_arm_preserves_base_meeting_mean_and_identity(
+    panel, macro_tables, base, shock_split, b_only
+):
+    cfg = v2.V2Config(
+        base=base,
+        history_macro=True,
+        regime=True,
+        shock_split=shock_split,
+        shock_weight=1.5,
+        b_only=b_only,
+        members=2,
+        max_epochs=2,
+        patience=1,
+    )
+    arm = v2.V2TwoPartArm(
+        0,
+        cfg,
+        device="cpu",
+        macro_tables=macro_tables,
+        encoder_fn=tiny_encoder,
+    )
+    arm.fit(panel)
+    mu, a, b = arm.predict(panel)
+    assert np.isfinite(mu).all() and np.isfinite(a).all() and np.isfinite(b).all()
+
+    ref_base = CAPMPooled() if base == "capm" else PooledOLS()
+    ref_base.fit(panel)
+    mu_base, a_base, b_base = ref_base.predict(panel)
+
+    # Meeting-average prediction matches the base model's meeting-average prediction exactly
+    meeting = pd.DatetimeIndex(panel.meeting)
+    np.testing.assert_allclose(
+        pd.Series(mu).groupby(meeting).mean().to_numpy(),
+        pd.Series(mu_base).groupby(meeting).mean().to_numpy(),
+        atol=1e-6,
+    )
+
+    if b_only and shock_split != "target_slope":  # target_slope: a carries the slope response
+        np.testing.assert_allclose(a, a_base, atol=1e-7)
+
+    # The output contract holds for every split (target_slope folds the slope response into a)
+    np.testing.assert_allclose(mu, a + b * panel.shock, atol=1e-5)
+
+
+def test_shock_weights_increase_with_shock_size_and_respect_cap(panel, macro_tables):
+    cfg = v2.V2Config(shock_weight=2.0, w_max=3.5)
+    aug = v2._augment_inputs(panel, cfg, macro_tables)
+    scaler = v2._V2Scaler.fit(aug)
+    batch = scaler.transform(aug, panel, panel.target, torch.device("cpu"))
+    rows = torch.arange(len(panel.target))
+    inverse, width, count = v2._segments(batch["codes"][rows])
+    w = v2._meeting_weights(batch, rows, inverse, width, count, cfg, scaler.s2_mean)
+    assert w.shape == (width,)
+    assert float(w.min()) >= 1.0 and float(w.max()) <= 3.5 + 1e-6
+
+    s_abs = v2._segment_mean(batch["shock_1d"].double(), inverse, width, count).abs()
+    order = torch.argsort(s_abs)
+    assert torch.all(w[order][1:] >= w[order][:-1] - 1e-9)
+

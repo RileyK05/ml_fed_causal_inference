@@ -269,6 +269,56 @@ def test_capm_pooled_recovers_beta_scaled_drift_and_shock():
     np.testing.assert_allclose(b, -0.9 * beta, atol=1e-4)
 
 
+def _two_shock_panel(seed=2):
+    from fedcore.q3.shocks import info_flags
+
+    panel = make_synthetic_panel(n_firms=30, n_meetings=24, noise="easy", seed=seed)
+    meetings = panel.meetings()
+    rng = np.random.default_rng(seed)
+    sp500 = rng.normal(0.0, 0.5, len(meetings))
+    sp500[0] = np.nan  # no S&P window move: counted as a policy meeting
+    table = pd.DataFrame({"sp500": sp500, "slope": rng.normal(0.0, 0.4, len(meetings))}, index=meetings)
+    beta = rng.uniform(0.5, 1.5, len(panel.target))
+    hist = panel.history.copy()
+    hist[:, :, BETA63] = beta[:, None]
+    flags = info_flags(panel, table)
+    assert np.isnan(flags).any() and (flags == 1.0).any() and (flags == 0.0).any()
+    return replace(panel, history=hist), table, beta
+
+
+def test_shock_splits_sum_to_s_and_unknown_meetings_are_policy():
+    from fedcore.q3.shocks import split_shock
+
+    panel, table, _ = _two_shock_panel()
+    s = np.asarray(panel.shock, dtype=np.float64)
+    S = split_shock(panel, "policy_info", table)
+    np.testing.assert_allclose(S.sum(axis=1), s)
+    assert ((S[:, 0] == 0) | (S[:, 1] == 0)).all()
+    first = pd.DatetimeIndex(panel.meeting) == panel.meetings()[0]
+    np.testing.assert_allclose(S[first, 0], s[first])  # unknown sign -> policy
+    T = split_shock(panel, "target_slope", table)
+    np.testing.assert_allclose(T[:, 0], s)
+    with pytest.raises(ValueError, match="slope"):
+        split_shock(panel, "target_slope", table.iloc[1:])
+
+
+@pytest.mark.parametrize("kind", ["policy_info", "target_slope"])
+def test_capm_two_shock_recovers_loadings_and_keeps_the_b_contract(kind):
+    from fedcore.q3.baselines import CAPMTwoShock
+    from fedcore.q3.shocks import split_shock
+
+    panel, table, beta = _two_shock_panel()
+    S = split_shock(panel, kind, table)
+    target = 0.1 + beta * (0.4 - 0.9 * S[:, 0] + 1.7 * S[:, 1])
+    panel = replace(panel, target=target.astype(np.float32))
+    model = CAPMTwoShock(kind, table=table)
+    model.fit(panel)
+    mu, a, b = model.predict(panel)
+    assert (model.c_, model.d_, model.k1_, model.k2_) == pytest.approx((0.1, 0.4, -0.9, 1.7), abs=1e-3)
+    np.testing.assert_allclose(mu, target, atol=1e-4)
+    np.testing.assert_allclose(mu, a + b * np.asarray(panel.shock, dtype=np.float64), atol=1e-9)
+
+
 def test_run_arms_saves_a_run(tmp_path):
     run_arms({"pooled": BASELINES["pooled"]}, ResultStore(tmp_path), n_firms=20, n_meetings=40)
     runs = ResultStore(tmp_path).runs("Q3")
