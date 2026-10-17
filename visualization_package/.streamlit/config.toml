@@ -1,0 +1,52 @@
+# fedviz app theme. Picked up when Streamlit runs from this folder: `python -m fedviz`
+# (or `fedviz`) does that for you. Viewers switch light/dark under Settings.
+
+[server]
+headless = true
+runOnSave = false
+
+[browser]
+gatherUsageStats = false
+
+[client]
+toolbarMode = "minimal"
+
+[theme]
+font = "Inter:https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap, sans-serif"
+headingFont = "Inter:https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap, sans-serif"
+codeFont = "JetBrains Mono:https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap, monospace"
+headingFontWeights = [700, 600, 600, 600, 600, 600]
+baseFontSize = 14
+baseRadius = "0.6rem"
+buttonRadius = "0.5rem"
+showWidgetBorder = true
+showSidebarBorder = true
+chartCategoricalColors = ["#5b8def", "#f2a541", "#34b38a", "#e5596b", "#9b7be8", "#3fb6d3", "#e57ab5", "#9cc54b", "#f08a4b", "#8a94a8"]
+
+[theme.dark]
+primaryColor = "#5b8def"
+backgroundColor = "#0d1117"
+secondaryBackgroundColor = "#151b26"
+textColor = "#d5dae3"
+linkColor = "#7fa6f3"
+borderColor = "#232b3a"
+dataframeBorderColor = "#232b3a"
+
+[theme.dark.sidebar]
+backgroundColor = "#0a0e14"
+secondaryBackgroundColor = "#151b26"
+borderColor = "#1b2230"
+
+[theme.light]
+primaryColor = "#3a6fd8"
+backgroundColor = "#f7f8fb"
+secondaryBackgroundColor = "#ffffff"
+textColor = "#1f2633"
+linkColor = "#3a6fd8"
+borderColor = "#e3e7ee"
+dataframeBorderColor = "#e3e7ee"
+
+[theme.light.sidebar]
+backgroundColor = "#eef1f6"
+secondaryBackgroundColor = "#ffffff"
+borderColor = "#dde2ea"

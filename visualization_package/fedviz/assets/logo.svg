@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="168" height="36" viewBox="0 0 168 36">
+  <rect x="0" y="2" width="32" height="32" rx="8" fill="#5b8def"/>
+  <rect x="7" y="19" width="4" height="9" rx="1.5" fill="#ffffff" opacity="0.75"/>
+  <rect x="14" y="12" width="4" height="16" rx="1.5" fill="#ffffff"/>
+  <rect x="21" y="16" width="4" height="12" rx="1.5" fill="#ffffff" opacity="0.85"/>
+  <circle cx="16" cy="8" r="2" fill="#f2a541"/>
+  <text x="42" y="25" font-family="Inter, Segoe UI, Helvetica, Arial, sans-serif" font-size="19" font-weight="700" fill="#5b8def" letter-spacing="-0.4">Fed<tspan fill="#8a94a8" font-weight="600">Viz</tspan></text>
+</svg>
