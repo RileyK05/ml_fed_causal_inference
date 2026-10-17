@@ -34,6 +34,7 @@ PERIODS = (("1994-2021", "1900-01-01", "2021-12-31"), ("1994-2008", "1900-01-01"
 SUBPERIODS = ("1994-2008", "2009-2021")
 LARGE = 0.25  # |s| in 10bp units
 P_PASS = 0.01
+MIN_ACTIVE = 10  # meetings per group where the tested term is nonzero
 REGIMES = ("high_vol", "drawdown", "easing", "tightening", "zlb")
 SECT = {"10": "Energy", "15": "Materials", "20": "Industrials", "25": "Cons. Disc.", "30": "Staples",
         "35": "Health Care", "40": "Financials", "45": "Info Tech", "50": "Comm. Svcs", "55": "Utilities",
@@ -45,33 +46,46 @@ TRAITS = {"sector_name": "sector", "rating": "credit rating", "fcf_group": "free
 
 # ----------------------------------------------------------------------------- tests
 
+def _fit_and_test(full: pd.DataFrame, yy: np.ndarray, meetings: pd.Series, groups, suffix: str):
+    """Clustered OLS, then a Wald test that the ``group|suffix`` coefficients are all equal.
+
+    All-zero columns are dropped first (a group the term never touches), and a test whose
+    constraint covariance is rank-deficient returns NaN rather than an unreliable p."""
+    full = full.loc[:, (full != 0).any(axis=0)]
+    groups = [g for g in groups if f"{g}|{suffix}" in full.columns]
+    if len(groups) < 2:
+        return {}, np.nan, "fewer than 2 groups"
+    fit = sm.OLS(yy, full.to_numpy()).fit(cov_type="cluster", cov_kwds={"groups": pd.factorize(meetings)[0]})
+    idx = [full.columns.get_loc(f"{g}|{suffix}") for g in groups]
+    per = {g: (float(fit.params[i]), float(fit.tvalues[i])) for g, i in zip(groups, idx)}
+    R = np.zeros((len(idx) - 1, full.shape[1]))
+    for r, i in enumerate(idx[1:]):
+        R[r, i], R[r, idx[0]] = 1.0, -1.0
+    rank = np.linalg.matrix_rank(R @ np.asarray(fit.cov_params()) @ R.T)
+    if rank < R.shape[0]:
+        return per, np.nan, f"constraint rank {rank} of {R.shape[0]}"
+    return per, float(np.squeeze(fit.wald_test(R, scalar=True, use_f=True).pvalue)), ""
+
+
 def group_test(d: pd.DataFrame, col: str, y: str, terms: list[str], test: str):
     """Joint meeting-clustered test that group x ``test`` coefficients are equal across groups.
 
     Regressors: group dummies and group x each of ``terms`` (which must include ``test``).
-    Returns (per-group {group: (coef, t)}, p-value, meetings)."""
+    Returns (per-group {group: (coef, t)}, p-value, meetings, note)."""
     d = d.dropna(subset=[y, *terms])
     d = d[(d[col] != "unknown") & d[col].notna()]
     counts = d.groupby(col)["meeting"].nunique()
-    d = d[d[col].isin(counts.index[counts >= 30])]
+    active = d[d[test] != 0].groupby(col)["meeting"].nunique()  # e.g. meetings in the regime
+    keep = counts.index[(counts >= 30) & (active.reindex(counts.index).fillna(0) >= MIN_ACTIVE)]
+    d = d[d[col].isin(keep)]
     if d[col].nunique() < 2:
-        return {}, np.nan, d["meeting"].nunique()
+        return {}, np.nan, d["meeting"].nunique(), "fewer than 2 groups"
     X = pd.get_dummies(d[col], dtype=float)
     blocks = [X] + [X.mul(d[t].astype(float), axis=0).add_suffix(f"|{t}") for t in terms]
     full = pd.concat(blocks, axis=1)
-    yy = (d[y] - d.groupby("meeting")[y].transform("mean")).astype(float)
-    fit = sm.OLS(yy.to_numpy(), full.to_numpy()).fit(
-        cov_type="cluster", cov_kwds={"groups": pd.factorize(d["meeting"])[0]})
-    idx = [full.columns.get_loc(f"{g}|{test}") for g in X.columns]
-    per = {g: (float(fit.params[i]), float(fit.tvalues[i])) for g, i in zip(X.columns, idx)}
-    R = np.zeros((len(idx) - 1, full.shape[1]))
-    for r, i in enumerate(idx[1:]):
-        R[r, i], R[r, idx[0]] = 1.0, -1.0
-    try:
-        p = float(np.squeeze(fit.wald_test(R, scalar=True, use_f=True).pvalue))
-    except (ValueError, np.linalg.LinAlgError):
-        p = np.nan
-    return per, p, d["meeting"].nunique()
+    yy = (d[y] - d.groupby("meeting")[y].transform("mean")).to_numpy(dtype=float)
+    per, p, note = _fit_and_test(full, yy, d["meeting"], list(X.columns), test)
+    return per, p, d["meeting"].nunique(), note
 
 
 def magnitude_test(d: pd.DataFrame, col: str, y: str):
@@ -83,23 +97,14 @@ def magnitude_test(d: pd.DataFrame, col: str, y: str):
     counts = d[d["large"] == 1].groupby(col)["meeting"].nunique()
     d = d[d[col].isin(counts.index[counts >= 10])]
     if d[col].nunique() < 2:
-        return {}, np.nan, d["meeting"].nunique()
+        return {}, np.nan, d["meeting"].nunique(), "fewer than 2 groups"
     X = pd.get_dummies(d[col], dtype=float)
     common = d[["vol21", "beta"]].astype(float)
     common = pd.concat([common, common.mul(d["large"], axis=0).add_suffix("|large")], axis=1)
     full = pd.concat([X, X.mul(d["large"], axis=0).add_suffix("|large"), common], axis=1)
     yy = (d["absy"] - d.groupby("meeting")["absy"].transform("mean")).to_numpy(dtype=float)
-    fit = sm.OLS(yy, full.to_numpy()).fit(cov_type="cluster", cov_kwds={"groups": pd.factorize(d["meeting"])[0]})
-    idx = [full.columns.get_loc(f"{g}|large") for g in X.columns]
-    per = {g: (float(fit.params[i]), float(fit.tvalues[i])) for g, i in zip(X.columns, idx)}
-    R = np.zeros((len(idx) - 1, full.shape[1]))
-    for r, i in enumerate(idx[1:]):
-        R[r, i], R[r, idx[0]] = 1.0, -1.0
-    try:
-        p = float(np.squeeze(fit.wald_test(R, scalar=True, use_f=True).pvalue))
-    except (ValueError, np.linalg.LinAlgError):
-        p = np.nan
-    return per, p, int(d.loc[d["large"] == 1, "meeting"].nunique())
+    per, p, note = _fit_and_test(full, yy, d["meeting"], list(X.columns), "large")
+    return per, p, int(d.loc[d["large"] == 1, "meeting"].nunique()), note
 
 
 # ----------------------------------------------------------------------------- data
@@ -284,13 +289,13 @@ def build_base(through: str = "2021-12-31") -> pd.DataFrame:
 def run_gates(base: pd.DataFrame) -> pd.DataFrame:
     rows = []
 
-    def add(gate, period, w, label, how, term, per, p, n):
+    def add(gate, period, w, label, how, term, per, p, n, note):
         if per:
             g, (coef, t) = max(per.items(), key=lambda kv: abs(kv[1][1]))
         else:
             g, coef, t = None, np.nan, np.nan
         rows.append(dict(gate=gate, period=period, window=w, trait=label, how=how, term=term, meetings=n,
-                         p=p, strongest_group=g, coef=coef, t=t))
+                         p=p, strongest_group=g, coef=coef, t=t, note=note))
 
     for period, lo, hi in PERIODS:
         part = base[(base.meeting >= lo) & (base.meeting <= hi)]
@@ -334,10 +339,18 @@ def main(argv=None):
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--through", default="2021-12-31")
     p.add_argument("--no-save", action="store_true")
+    p.add_argument("--base-cache", help="parquet path: reuse the built rows if present, else write them")
     args = p.parse_args(argv)
     if pd.Timestamp(args.through) > pd.Timestamp("2021-12-31"):
         raise SystemExit("gates use development meetings only (through 2021-12-31)")
-    base = build_base(args.through)
+    from pathlib import Path
+
+    if args.base_cache and Path(args.base_cache).exists():
+        base = pd.read_parquet(args.base_cache)
+    else:
+        base = build_base(args.through)
+        if args.base_cache:
+            base.to_parquet(args.base_cache)
     check = (base["y|day 0"] + base["beta"] * base["mkt|day 0"] - base["day0_panel"]).abs()
     print(f"{base.meeting.nunique()} meetings, {len(base):,} rows; day-0 rebuild max |diff| {check.max():.4f}; "
           f"information meetings {base.groupby('meeting')['s_info'].first().ne(0).mean():.0%}; "

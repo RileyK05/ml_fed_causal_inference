@@ -147,3 +147,36 @@ def test_shock_weights_increase_with_shock_size_and_respect_cap(panel, macro_tab
     order = torch.argsort(s_abs)
     assert torch.all(w[order][1:] >= w[order][:-1] - 1e-9)
 
+
+
+@pytest.mark.parametrize("slope", [False, True])
+def test_sector_two_shock_recovers_sector_loadings_and_keeps_the_b_contract(slope):
+    import dataclasses
+
+    from fedcore.q3.contracts import BETA63
+    from fedcore.q3.shocks import split_shock
+    from fedenc.workflow import GICS_SECTORS
+
+    panel = make_synthetic_panel(n_firms=44, n_meetings=24, noise="easy", seed=3)
+    meetings = panel.meetings()
+    rng = np.random.default_rng(3)
+    table = pd.DataFrame({"sp500": rng.normal(0, 0.5, len(meetings)), "slope": rng.normal(0, 0.4, len(meetings))},
+                         index=meetings)
+    n, k = len(panel.target), len(GICS_SECTORS)
+    code = rng.integers(0, k, n)
+    D = np.eye(k, dtype=np.float32)[code]
+    beta = rng.uniform(0.5, 1.5, n)
+    hist = panel.history.copy()
+    hist[:, :, BETA63] = beta[:, None]
+    panel = dataclasses.replace(panel, history=hist, fundamentals=np.concatenate([panel.fundamentals, D], axis=1),
+                                fundamentals_mask=np.concatenate([panel.fundamentals_mask, D == D], axis=1))
+    S = split_shock(panel, "policy_info", table)
+    sl = split_shock(panel, "target_slope", table)[:, 1]
+    g_p = np.linspace(-0.5, 0.5, k)
+    target = 0.1 + beta * (0.3 - 0.9 * S[:, 0] + 0.6 * S[:, 1]) + g_p[code] * S[:, 0] + (0.4 * sl if slope else 0)
+    panel = dataclasses.replace(panel, target=target.astype(np.float32))
+    model = v2.SectorTwoShock(slope=slope, table=table)
+    model.fit(panel)
+    mu, a, b = model.predict(panel)
+    np.testing.assert_allclose(mu, target, atol=1e-3)
+    np.testing.assert_allclose(mu, a + b * panel.shock, atol=1e-6)

@@ -648,6 +648,52 @@ class V2TwoPartArm:
         return mu, a, b
 
 
+class SectorTwoShock:
+    """``capm_two_shock`` plus sector intercepts and sector x policy / information loadings, by OLS.
+
+    Needs a panel built with ``sector=True`` (GICS one-hot in the last fundamentals columns; an
+    unknown sector gets no sector terms). ``slope=True`` adds sector x slope change, kept in ``a``
+    like ``capm_target_slope``, so ``mu = a + b*s`` holds."""
+
+    def __init__(self, slope: bool = False, table=None):
+        self.slope = slope
+        self.table = table
+        self.fit_result = None
+
+    def _parts(self, panel: Q3Panel):
+        from fedcore.q3.baselines import _beta
+        from fedenc.workflow import GICS_SECTORS
+
+        D = np.nan_to_num(np.asarray(panel.fundamentals[:, -len(GICS_SECTORS):], dtype=np.float64))
+        S = split_shock(panel, "policy_info", self.table)
+        slope = split_shock(panel, "target_slope", self.table)[:, 1] if self.slope else np.zeros(len(D))
+        return _beta(panel), D, S, slope
+
+    def _design(self, beta, D, S, slope):
+        cols = [np.ones(len(beta)), beta, beta * S[:, 0], beta * S[:, 1], D, D * S[:, [0]], D * S[:, [1]]]
+        if self.slope:
+            cols += [beta * slope, D * slope[:, None]]
+        return np.column_stack(cols)
+
+    def fit(self, panel: Q3Panel, **kwargs) -> None:
+        del kwargs
+        parts = self._parts(panel)
+        self.coef_, *_ = np.linalg.lstsq(self._design(*parts), np.asarray(panel.target, dtype=np.float64), rcond=None)
+
+    def predict(self, panel: Q3Panel):
+        beta, D, S, slope = self._parts(panel)
+        k = D.shape[1]
+        c, d, kp, ki = self.coef_[:4]
+        g_a, g_p, g_i = self.coef_[4:4 + k], self.coef_[4 + k:4 + 2 * k], self.coef_[4 + 2 * k:4 + 3 * k]
+        a = c + d * beta + D @ g_a
+        if self.slope:
+            a = a + self.coef_[4 + 3 * k] * beta * slope + (D @ self.coef_[5 + 3 * k:5 + 4 * k]) * slope
+        info = S[:, 1] != 0.0
+        b = np.where(info, ki * beta + D @ g_i, kp * beta + D @ g_p)
+        s = np.asarray(panel.shock, dtype=np.float64)
+        return a + b * s, a, b
+
+
 def ablation_makers(device: str | None = None, members: int = 3) -> dict:
     """Modular progressive ablation arms + references."""
     return {
