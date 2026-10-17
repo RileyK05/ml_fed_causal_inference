@@ -180,3 +180,66 @@ def test_sector_two_shock_recovers_sector_loadings_and_keeps_the_b_contract(slop
     mu, a, b = model.predict(panel)
     np.testing.assert_allclose(mu, target, atol=1e-3)
     np.testing.assert_allclose(mu, a + b * panel.shock, atol=1e-6)
+
+
+@pytest.mark.parametrize("vol", [False, True])
+def test_capm_tilt_recovers_a_context_scaled_beta_drift(vol):
+    import dataclasses
+
+    from fedcore.q3.contracts import BETA63
+
+    panel = make_synthetic_panel(n_firms=40, n_meetings=30, noise="easy", seed=4)
+    rng = np.random.default_rng(4)
+    beta = rng.uniform(0.5, 1.5, len(panel.target))
+    hist = panel.history.copy()
+    hist[:, :, BETA63] = beta[:, None]
+    panel = dataclasses.replace(panel, history=hist)
+    model = v2.CAPMTilt(vol=vol)
+    model._design(panel, fit=True)
+    z = np.clip(np.nan_to_num((panel.context - model.med_) / model.iqr_), -5, 5)
+    s = np.asarray(panel.shock, dtype=np.float64)
+    target = 0.1 + beta * (0.3 + 0.5 * z[:, 0] - 0.8 * s)
+    panel = dataclasses.replace(panel, target=target.astype(np.float32))
+    model.fit(panel)
+    mu, a, b = model.predict(panel)
+    np.testing.assert_allclose(mu, target, atol=1e-4)
+    np.testing.assert_allclose(mu, a + b * s, atol=1e-9)
+    np.testing.assert_allclose(b, -0.8 * beta, atol=1e-4)
+
+
+def test_capm_tilt_ridge_shrinks_to_capm_when_the_tilt_is_noise():
+    from fedcore.q3.baselines import CAPMPooled
+
+    panel = make_synthetic_panel(n_firms=40, n_meetings=30, seed=5)
+    tilt, capm = v2.CAPMTilt(ridge=True), CAPMPooled()
+    tilt.fit(panel)
+    capm.fit(panel)
+    mu, a, b = tilt.predict(panel)
+    np.testing.assert_allclose(mu, a + b * panel.shock, atol=1e-9)
+    assert tilt.alpha_ in v2.CAPMTilt.ALPHAS and abs(tilt.k_ - capm.k_) < 1e-9
+
+
+@pytest.mark.parametrize("both", [False, True])
+def test_capm_betas_uses_the_window_average_beta_and_keeps_the_b_contract(both):
+    import dataclasses
+
+    from fedcore.q3.contracts import BETA63
+
+    panel = make_synthetic_panel(n_firms=30, n_meetings=20, noise="easy", seed=6)
+    rng = np.random.default_rng(6)
+    n = len(panel.target)
+    true = rng.uniform(0.5, 1.5, n)
+    hist = panel.history.copy()
+    hist[:, :, BETA63] = true[:, None] + rng.normal(0, 0.3, (n, hist.shape[1]))  # noisy daily estimates
+    hist[:, -1, BETA63] = true + rng.normal(0, 0.5, n)                           # an extra-noisy last value
+    s = np.asarray(panel.shock, dtype=np.float64)
+    panel = dataclasses.replace(panel, history=hist, target=(0.2 + true * (0.3 - 0.9 * s)).astype(np.float32))
+    model = v2.CAPMBetas(both=both)
+    model.fit(panel)
+    mu, a, b = model.predict(panel)
+    np.testing.assert_allclose(mu, a + b * s, atol=1e-9)
+    from fedcore.q3.baselines import CAPMPooled
+    capm = CAPMPooled()
+    capm.fit(panel)
+    t = np.asarray(panel.target, dtype=np.float64)
+    assert np.mean((t - mu) ** 2) < 0.5 * np.mean((t - capm.predict(panel)[0]) ** 2)

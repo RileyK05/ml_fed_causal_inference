@@ -128,3 +128,57 @@ beta.
 Not tried here: FRED regime series (VIX, credit spreads; FRED blocked scripted downloads from
 both this machine and vast), statement text, unscheduled meetings (decision D1), and horizons
 beyond 2 days for the network.
+
+## Where the networks disagree with CAPM (development, out of sample)
+
+Added 2026-10-17 at the user's request: not the headline MSE, but where the predictions differ.
+Script: scratchpad `disagree.py`; d = network minus CAPM within each meeting.
+
+- **Small but right.** The six CAPM-base networks deviate from CAPM by 0.08-0.11% per stock (CAPM's
+  miss: 2.0%). When they deviate, the actual return goes their way, by more than they say: the
+  slope of CAPM's miss on the six-network consensus d is 1.56 (mean per-meeting 2.10, t 2.4).
+  Top decile of |d|: 56% right direction, 0.28% realized vs 0.22% predicted. The MSE gain matches
+  var(d) x (2 x slope - 1) = 0.015.
+- **Systematic.** The six agree with each other (correlations 0.6-0.9); `v2_b_only` does not (-0.2).
+- **Drift, not sensitivity.** All of d is in `a`; the `b x s` part is 3% of its variance.
+- **Where.** Top 10 of 161 meetings hold 42% of it (all 2001-03); high-beta, high-volatility and
+  Info Tech names hold about half. It still holds after 2004 (t 2.2) and 2009-2021 (t 2.1).
+- **What it tracks.** The firm's 1-year average beta (correlation 0.58; 0.94 in 2001-03) more than
+  the 63-day beta CAPM uses (0.43).
+- **Big movers: nothing.** The top 1% of CAPM misses (mean 7.1%, 6.3x own volatility): every
+  network leans the right way 48-52% of the time and calls 0% of the miss.
+
+### Test 1: does a simple model reproduce it?
+
+| Model | MSE vs `capm_pooled` |
+|---|---|
+| beta x context tilt, OLS / ridge / centered ridge | +1.23 / +1.13 / +0.14 (overfits; tilt points the wrong way) |
+| CAPM with the 1-year average beta (`CAPMBetas(252)`) | -0.0105 (-0.030, +0.008) |
+| CAPM with both betas (`CAPMBetas(252, both=True)`) | -0.0115 (-0.029, +0.002) |
+| six-network consensus | -0.0155 (-0.033, +0.000) |
+
+A steadier beta gets about 70% of the consensus gain with five numbers. The networks keep a small,
+different signal: their disagreement with the both-betas CAPM still predicts its miss (slope 1.12,
+mean per-meeting 1.32, t 2.2; correlation of the two tilts 0.14).
+
+## Pre-registered 2022-2025 check
+
+Written and committed before any 2022-2025 prediction is made. 2022-2025 was used once for v1's
+locked model and never for v2 (plan option A: a labelled secondary check, weaker evidence).
+
+- **Data:** S&P 500 panel. Train on all 221 meetings through 2021-12-15; test the 32 meetings
+  2022-01-26 to 2025-12-10. One fold, raw returns, the ablation's configs, fresh seeds 6, 7, 8,
+  3 members. Runner: `python -m fedenc.v2 final`.
+- **Models:** the six CAPM-base arms (`v2_capm_base`, `v2_macro_hist`, `v2_regime`,
+  `v2_policy_info`, `v2_target_slope`, `v2_shock_weighted`); `capm_pooled`; `capm_beta_both`.
+  Consensus = the mean of the six arms' mu.
+- **P1 (primary):** CAPM's within-meeting miss on the consensus d (consensus minus `capm_pooled`,
+  within meeting): mean per-meeting slope > 0, one-sided meeting-bootstrap p < 0.05.
+- **P2:** consensus per-meeting MSE below `capm_pooled` (one-sided meeting-bootstrap p < 0.05).
+- **P3:** `capm_beta_both`'s miss on (consensus minus `capm_beta_both`): mean per-meeting slope > 0,
+  one-sided p < 0.05.
+- **Also reported, no claim:** each arm alone, `capm_beta_both` vs `capm_pooled`, the 2022 hiking
+  meetings separately.
+- **Power:** at the development effect size (t 2.4 on 161 meetings), 32 meetings give an expected
+  t of about 1.1. A null is likely even if the effect is real, and would not refute it; a correct
+  sign is weak support. Everything is reported whatever the outcome.

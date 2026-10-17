@@ -694,6 +694,124 @@ class SectorTwoShock:
         return a + b * s, a, b
 
 
+class CAPMBetas:
+    """CAPM with a steadier beta: the firm's average 63-day beta over the last ``window`` days.
+
+    ``both=True`` keeps the last 63-day beta as well: ``r = c + d1*b63 + d2*bw + (k1*b63 + k2*bw)*s``
+    by OLS. Tests whether the networks' edge over ``capm_pooled`` is just a better beta estimate."""
+
+    def __init__(self, window: int = 252, both: bool = False):
+        self.window = window
+        self.both = both
+        self.fit_result = None
+
+    def _betas(self, panel: Q3Panel):
+        from fedcore.q3.baselines import _beta
+        from fedcore.q3.contracts import BETA63
+        from fedcore.q3.features import masked_mean_std
+        from fedcore.q3.real import BETA_FALLBACK
+
+        b63 = _beta(panel)
+        bw, _ = masked_mean_std(panel.history[:, -self.window:, BETA63], panel.history_mask[:, -self.window:])
+        bw = np.where(np.isfinite(bw), bw, b63 if np.isfinite(b63).all() else BETA_FALLBACK)
+        return (b63, bw) if self.both else (bw,)
+
+    def _design(self, panel: Q3Panel):
+        betas = self._betas(panel)
+        s = np.asarray(panel.shock, dtype=np.float64)
+        return np.column_stack([np.ones(len(s)), *betas, *(b * s for b in betas)]), betas
+
+    def fit(self, panel: Q3Panel, **kwargs) -> None:
+        del kwargs
+        X, _ = self._design(panel)
+        self.coef_, *_ = np.linalg.lstsq(X, np.asarray(panel.target, dtype=np.float64), rcond=None)
+
+    def predict(self, panel: Q3Panel):
+        _, betas = self._design(panel)
+        k = len(betas)
+        a = self.coef_[0] + sum(self.coef_[1 + j] * b for j, b in enumerate(betas))
+        b = sum(self.coef_[1 + k + j] * bb for j, bb in enumerate(betas))
+        return a + b * np.asarray(panel.shock, dtype=np.float64), a, b
+
+
+class CAPMTilt:
+    """``capm_pooled`` plus a beta-scaled drift that varies with pre-meeting conditions, by OLS.
+
+    ``r = c + beta*(d + k*s) + beta * (g . ctx)`` with ``ctx`` the panel's context columns (the same
+    pre-meeting inputs the networks see), median/IQR-scaled and clipped on the training panel.
+    ``vol=True`` adds the firm's 21-day volatility and volatility x ctx. ``centered=True`` uses beta
+    (and volatility) minus the meeting average in the tilt, so the meeting mean stays CAPM's, as in
+    the networks; ``ridge=True`` shrinks the tilt (penalty from an inner validation split). Only ``a`` changes, so
+    ``b = k*beta`` as in ``capm_pooled``. The simple-model check of the networks' drift tilt."""
+
+    ALPHAS = tuple(10.0 ** np.arange(-2, 6.5, 0.5))
+
+    def __init__(self, vol: bool = False, ridge: bool = False, centered: bool = False, val_frac: float = 0.15):
+        self.vol = vol
+        self.centered = centered
+        self.ridge = ridge
+        self.val_frac = val_frac
+        self.fit_result = None
+
+    def _design(self, panel: Q3Panel, fit: bool = False):
+        from fedcore.q3.baselines import _beta
+        from fedcore.q3.contracts import RVOL21
+        from fedcore.q3.features import last_observed
+
+        ctx = np.asarray(panel.context, dtype=np.float64)
+        if fit:
+            self.med_ = np.nanmedian(ctx, axis=0)
+            q75, q25 = np.nanpercentile(ctx, [75, 25], axis=0)
+            self.iqr_ = np.where(q75 - q25 > 1e-12, q75 - q25, 1.0)
+        z = np.clip(np.nan_to_num((ctx - self.med_) / self.iqr_), -5.0, 5.0)
+        beta = _beta(panel)
+        codes = pd.factorize(pd.DatetimeIndex(panel.meeting))[0]
+        centre = (lambda x: x - pd.Series(x).groupby(codes).transform("mean").to_numpy()) if self.centered             else (lambda x: x)
+        bt = centre(beta)  # centered: the tilt only reorders firms within a meeting, like the networks
+        cols = [np.ones(len(beta)), beta, bt[:, None] * z]
+        if self.vol:
+            v = last_observed(panel.history[:, :, RVOL21], panel.history_mask)
+            if fit:
+                self.vmed_ = float(np.nanmedian(v))
+            v = centre(np.nan_to_num(v, nan=self.vmed_))
+            cols += [v, v[:, None] * z]
+        return beta, np.column_stack(cols)
+
+    def fit(self, panel: Q3Panel, **kwargs) -> None:
+        del kwargs
+        beta, A = self._design(panel, fit=True)
+        s = np.asarray(panel.shock, dtype=np.float64)
+        y = np.asarray(panel.target, dtype=np.float64)
+        if not self.ridge:
+            coef, *_ = np.linalg.lstsq(np.column_stack((A, beta * s)), y, rcond=None)
+            self.g_, self.k_ = coef[:-1], float(coef[-1])
+            return
+        # Ridge: CAPM terms by OLS, then the tilt columns shrunk on the CAPM residual. The penalty
+        # is picked on the last val_frac of training meetings (the networks' validation split).
+        base = np.column_stack((A[:, :2], beta * s))
+        c3, *_ = np.linalg.lstsq(base, y, rcond=None)
+        e, F = y - base @ c3, A[:, 2:]
+        self.fsd_ = np.where(F.std(axis=0) > 1e-12, F.std(axis=0), 1.0)
+        F = F / self.fsd_
+        meetings = pd.DatetimeIndex(panel.meeting)
+        val = meetings >= panel.meetings()[-max(1, int(round(self.val_frac * len(panel.meetings()))))]
+
+        def solve(rows, alpha):
+            X = F[rows]
+            return np.linalg.solve(X.T @ X + alpha * np.eye(X.shape[1]), X.T @ e[rows])
+
+        errs = [np.mean((e[val] - F[val] @ solve(~val, al)) ** 2) for al in self.ALPHAS]
+        self.alpha_ = float(self.ALPHAS[int(np.argmin(errs))])
+        w = solve(np.ones(len(e), dtype=bool), self.alpha_) / self.fsd_
+        self.g_ = np.concatenate((c3[:2], w))
+        self.k_ = float(c3[2])
+
+    def predict(self, panel: Q3Panel):
+        beta, A = self._design(panel)
+        a, b = A @ self.g_, self.k_ * beta
+        return a + b * np.asarray(panel.shock, dtype=np.float64), a, b
+
+
 def ablation_makers(device: str | None = None, members: int = 3) -> dict:
     """Modular progressive ablation arms + references."""
     return {
@@ -817,6 +935,42 @@ def run_single(
     return summary, tables
 
 
+FINAL_ARMS = ("v2_capm_base", "v2_macro_hist", "v2_regime", "v2_policy_info", "v2_target_slope",
+              "v2_shock_weighted")
+DEV_END, FINAL_END = pd.Timestamp("2021-12-31"), pd.Timestamp("2025-12-31")
+
+
+def run_final(arms=FINAL_ARMS, seeds=(6, 7, 8), members=3, device=None, store=None, references=True):
+    """The pre-registered 2022-2025 check of the v2 drift tilt (docs/encoder/v2-results.md). Training.
+
+    One fold: fit on every meeting through 2021, score 2022-2025. Fresh seeds (6, 7, 8), the
+    ablation's configs. ``references`` adds capm_pooled and the both-betas CAPM."""
+    from fedcore.protocol import walk_forward
+    from fedcore.q3.real import UNIVERSES
+    from fedcore.results import ResultStore
+    from fedenc.config import RESULTS
+    from fedenc.runs import save_runs
+    from fedenc.workflow import bounded_panel
+
+    panel, through = bounded_panel(str(FINAL_END.date()))
+    meetings = panel.meetings()
+    n_dev = int((meetings <= DEV_END).sum())
+    folds = walk_forward(meetings, n_dev, len(meetings) - n_dev)
+    if len(folds) != 1 or folds[0].test.min() <= DEV_END or folds[0].train.max() > DEV_END:
+        raise RuntimeError("the final check must be one fold: train through 2021, test 2022-2025")
+    print(f"final: train {len(folds[0].train)} meetings, test {len(folds[0].test)} "
+          f"({folds[0].test.min().date()} to {folds[0].test.max().date()})", flush=True)
+    every = ablation_makers(device=device, members=members)
+    makers = {a: every[a] for a in arms}
+    if references:
+        makers.update(capm_pooled=BASELINES["capm_pooled"], capm_beta_both=lambda seed: CAPMBetas(252, both=True))
+    return save_runs(panel, makers, prefix="v2-final", role="robustness",
+                     params=dict(through=str(through.date()), dev_end=str(DEV_END.date()), members=members,
+                                 preregistered="docs/encoder/v2-results.md#pre-registered-2022-2025-check"),
+                     min_train=n_dev, test_size=len(meetings) - n_dev, seeds=seeds, store=store or ResultStore(RESULTS),
+                     datasets=UNIVERSES["sp500"].inputs)
+
+
 def main(argv=None):
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = p.add_subparsers(dest="command", required=True)
@@ -829,6 +983,11 @@ def main(argv=None):
     q_ab.add_argument("--test-size", type=int, default=16)
     q_ab.add_argument("--arms", nargs="+", help="optional subset of arm names to run")
     q_ab.add_argument("--device")
+
+    q_f = sub.add_parser("final", help="the pre-registered 2022-2025 check (training; run once)")
+    q_f.add_argument("--arms", nargs="+", default=list(FINAL_ARMS))
+    q_f.add_argument("--no-references", action="store_true")
+    q_f.add_argument("--device")
 
     q_s = sub.add_parser("single", help="run one custom modular configuration")
     q_s.add_argument("--name", default="v2_custom")
@@ -848,6 +1007,9 @@ def main(argv=None):
     q_s.add_argument("--device")
 
     args = p.parse_args(argv)
+    if args.command == "final":
+        run_final(arms=tuple(args.arms), device=args.device, references=not args.no_references)
+        return
     if args.command == "ablation":
         run_ablation(
             through=args.through,
