@@ -316,6 +316,26 @@ def run_gates(base: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
+def run_signed_gate(base: pd.DataFrame) -> pd.DataFrame:
+    """G4 (v3): do groups differ in their response to hawkish (s > 0) or dovish (s < 0) surprises,
+    with both halves of the surprise in the regression? Same pass bar as G1-G3."""
+    base = base.assign(s_hawk=base["s"].clip(lower=0.0), s_dove=base["s"].clip(upper=0.0))
+    rows = []
+    for period, lo, hi in PERIODS:
+        part = base[(base.meeting >= lo) & (base.meeting <= hi)]
+        for w in WINDOWS:
+            y, mk = f"y|{w}", f"mkt|{w}"
+            within = part.assign(**{y: part[y] - part.groupby(["meeting", "sector"])[y].transform("mean")})
+            for col, label in TRAITS.items():
+                for how, d in (("raw", part),) + ((("within sector", within),) if col != "sector_name" else ()):
+                    for term in ("s_hawk", "s_dove"):
+                        per, p, n, note = group_test(d, col, y, [mk, "s_hawk", "s_dove"], term)
+                        g, (coef, tt) = max(per.items(), key=lambda kv: abs(kv[1][1])) if per else (None, (np.nan, np.nan))
+                        rows.append(dict(gate="G4", period=period, window=w, trait=label, how=how, term=term,
+                                         meetings=n, p=p, strongest_group=g, coef=coef, t=tt, note=note))
+    return pd.DataFrame(rows)
+
+
 def verdict(tests: pd.DataFrame) -> pd.DataFrame:
     """Per gate: candidates passing p < 0.01 in both subperiods (within sector, or sector raw)."""
     eligible = tests[(tests["how"] == "within sector") | (tests["trait"] == "sector")]
@@ -340,6 +360,7 @@ def main(argv=None):
     p.add_argument("--through", default="2021-12-31")
     p.add_argument("--no-save", action="store_true")
     p.add_argument("--base-cache", help="parquet path: reuse the built rows if present, else write them")
+    p.add_argument("--signed", action="store_true", help="run only the signed-shock gate G4 (v3)")
     args = p.parse_args(argv)
     if pd.Timestamp(args.through) > pd.Timestamp("2021-12-31"):
         raise SystemExit("gates use development meetings only (through 2021-12-31)")
@@ -355,6 +376,23 @@ def main(argv=None):
     print(f"{base.meeting.nunique()} meetings, {len(base):,} rows; day-0 rebuild max |diff| {check.max():.4f}; "
           f"information meetings {base.groupby('meeting')['s_info'].first().ne(0).mean():.0%}; "
           f"large meetings {int(base.groupby('meeting')['large'].first().sum())}", flush=True)
+    if args.signed:
+        tests = run_signed_gate(base)
+        summary = verdict(tests)
+        with pd.option_context("display.width", 250, "display.max_colwidth", 200):
+            print("\n== verdict\n" + summary.to_string(index=False))
+            print("\n== smallest p, 1994-2021\n" + tests[tests.period == "1994-2021"].nsmallest(15, "p").to_string(index=False))
+        if not args.no_save:
+            from fedcore.questions import specs
+            from fedcore.results import ResultStore
+            from fedenc.config import RESULTS
+
+            ResultStore(RESULTS).save(specs()["Q3"], "v3-signed-gate", role="exploratory",
+                                      params=dict(through=args.through, universe="top1500", p_pass=P_PASS),
+                                      metrics={"G4_passing": int(summary["passing"].sum())},
+                                      tables={"verdict": summary, "tests": tests},
+                                      notes="Signed-shock gate G4 (docs/encoder/q3-v3-results.md); no model fit.")
+        return summary, tests
     tests = run_gates(base)
     summary = verdict(tests)
     regimes = base.groupby("meeting")[list(REGIMES)].first().mean().rename("share_of_meetings").reset_index()

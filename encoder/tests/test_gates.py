@@ -29,3 +29,12 @@ def test_magnitude_test_detects_bigger_moves_on_large_days():
     d.loc[(d["g"] == "c") & (d["large"] == 1), "y"] *= 3.0
     per, p, n_large, _ = gates.magnitude_test(d, "g", "y")
     assert p < 1e-6 and max(per, key=lambda g: per[g][0]) == "c" and n_large > 10
+
+
+def test_signed_group_test_separates_hawkish_from_dovish_responses():
+    d = _frame(0.0, seed=3)
+    d["s_hawk"], d["s_dove"] = d["s"].clip(lower=0), d["s"].clip(upper=0)
+    d.loc[d["g"] == "c", "y"] += 3.0 * d.loc[d["g"] == "c", "s_hawk"]  # only hikes hit group c
+    _, p_hawk, _, _ = gates.group_test(d, "g", "y", ["mkt", "s_hawk", "s_dove"], "s_hawk")
+    _, p_dove, _, _ = gates.group_test(d, "g", "y", ["mkt", "s_hawk", "s_dove"], "s_dove")
+    assert p_hawk < 1e-6 and p_dove > 0.01
