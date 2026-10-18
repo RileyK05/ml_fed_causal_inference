@@ -107,3 +107,29 @@ training folds; null = nothing beyond beta; positive = worse): days 0-2 +0.043
   Future arms should select epochs with the inner split, then refit the base (and, at the
   selected epoch count, the correction) on the full training window, as the review allowed.
 - **Best model in v3: A0, the five-number two-beta CAPM.** It is the reference to beat.
+
+## Big-surprise meetings only (added 2026-10-18, user request)
+
+The all-meeting MSE is dominated by small-surprise meetings, where b x s is near zero and only
+`a` is scored. Same saved predictions, restricted to meetings with |s| above a threshold.
+Firm-vs-firm (cross-firm) error; meeting-bootstrap 95% ranges. Scratchpad `big_s.py`.
+
+| Comparison | \|s\| >= 1bp (90) | \|s\| >= 2.5bp (42) | \|s\| >= 5bp (10) |
+|---|---|---|---|
+| two-beta CAPM vs one-beta CAPM | -0.007 (-0.022, +0.007) | -0.025 (-0.053, +0.000) | **-0.083 (-0.171, -0.001)** |
+| best networks vs one-beta CAPM | -0.02 to -0.04 | -0.03 to -0.04 | -0.11 to -0.12 |
+| v2 networks vs two-beta CAPM | -0.02 to +0.01 | -0.004 to +0.005 | -0.027 to +0.061, all ranges include 0 |
+| v3 A1 (MLP, projected) vs own base | | -0.002 (-0.009, +0.005) | **-0.018 (-0.043, -0.001)** |
+| v3 A2 (transformer, centered) vs own base | | -0.005 (-0.019, +0.007) | +0.013 (-0.007, +0.040) |
+| v3 A3 (transformer, projected) vs own base | | -0.002 (-0.009, +0.005) | **-0.014 (-0.030, -0.001)** |
+
+The 10 meetings of 5bp or more: 2001-11-06, 2002-08-13, 2002-11-06, 2003-06-25, 2004-01-28,
+2007-09-18, 2008-01-30, 2008-09-16, 2008-12-16, 2011-09-21.
+
+Reading: gains grow with the surprise, as they should if anything is in b x s. Most of the
+growth is the better beta (the two-beta CAPM is the only model whose range excludes zero against
+the one-beta CAPM at 5bp+). On the 10 biggest meetings the two *projected* corrections, which
+cannot use the beta span, beat their own base by 0.014-0.018 (0.2% of the error), ranges just
+excluding zero; the centered one does not. That is the first beyond-beta signal in the place it
+should be, but it rests on 10 meetings (8 of them 2001-2008), several comparisons, and the MLP
+does as well as the transformer. A lead for a targeted follow-up, not a finding.
