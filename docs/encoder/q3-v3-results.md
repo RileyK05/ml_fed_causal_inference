@@ -131,5 +131,9 @@ growth is the better beta (the two-beta CAPM is the only model whose range exclu
 the one-beta CAPM at 5bp+). On the 10 biggest meetings the two *projected* corrections, which
 cannot use the beta span, beat their own base by 0.014-0.018 (0.2% of the error), ranges just
 excluding zero; the centered one does not. That is the first beyond-beta signal in the place it
-should be, but it rests on 10 meetings (8 of them 2001-2008), several comparisons, and the MLP
+should be, but it rests on 10 meetings (9 of them 2001-2008), several comparisons, and the MLP
 does as well as the transformer. A lead for a targeted follow-up, not a finding.
+
+Follow-up: [Astra's 2026-10-18 debrief](q3-v3-debrief_a.md) reproduces the saved-prediction
+scores, separates a and b corrections, quantifies event concentration, and evaluates the
+projected corrections on the full-window A0 base without retraining.
