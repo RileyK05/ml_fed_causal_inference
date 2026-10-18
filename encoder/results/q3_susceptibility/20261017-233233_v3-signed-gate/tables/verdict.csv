@@ -1,0 +1,2 @@
+gate,tests,p_below_01,expected_by_chance,candidates,passing,passing_list,result
+G4,204,23,2.0,36,2,sector/raw/s_dove/days 0-2; sector/raw/s_hawk/days 0-2,PASS

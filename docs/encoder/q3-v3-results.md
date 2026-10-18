@@ -46,6 +46,64 @@ Also reported: cross-firm MSE, the disagreement slope (CAPM's miss on each arm's
 A0), and the members' selected epochs. A tie with A0 is a reportable outcome, not a failure to
 fix. No arm is added, retuned or rerun on the apparent winner.
 
-## Results
+## Results (run 2026-10-17/18)
 
-_Pending._
+161 development test meetings; per-meeting MSE differences with meeting-bootstrap 95% ranges
+(negative = first arm better). A1-A3: 3 seeds x 3 members on vast; the rest on CPU. Scoring
+script: scratchpad `score_v3.py`.
+
+| Arm | MSE | Cross-firm MSE |
+|---|---|---|
+| A0 two-beta CAPM | **5.9024** | 4.1211 |
+| R0 ridge correction | 5.9068 | 4.1255 |
+| R2 + within-meeting ranks | 5.9111 | 4.1298 |
+| `capm_pooled` | 5.9139 | 4.1259 |
+| R1 + 5-year recency | 5.9167 | 4.1426 |
+| A3 transformer, projected | 5.9322 | 4.1170 |
+| A2 transformer, centered | 5.9327 | 4.1176 |
+| A1 summary MLP, projected | 5.9330 | 4.1179 |
+
+**Pre-stated questions.**
+
+| Question | Comparison | All meetings | 2004-2021 | Answer |
+|---|---|---|---|---|
+| Q1 beyond the beta span | A3 - A0 | +0.030 (-0.053, +0.135) | +0.044 | No |
+| Q2 sequence needed | A3 - A1 | -0.001 (-0.005, +0.004) | -0.001 | No difference |
+| Q3 projection matters | A3 - A2 | -0.001 (-0.006, +0.005) | -0.000 | No difference |
+| Q4 recency | R1 - R0 | +0.010 (-0.103, +0.098) | +0.003 | No |
+| Q4 ranks | R2 - R0 | +0.004 (-0.003, +0.011) | **+0.008 (+0.002, +0.013)** | No; slightly worse after 2004 |
+| Q6 G4 signed shocks | gate | 2 of 36 candidates pass (sector raw x s_hawk and x s_dove, days 0-2) | | Pass in-sample, **fails out of sample** |
+
+**The A-arms' gap to A0 is the base, not the correction.** Review fix 1 fits the deployed base on
+the inner-training block (85% of each training window), declared with no refit. Refitting
+`capm_beta_both` that way alone (`A0_inner`, diagnostic, no network) scores 5.9330: the 85% base
+costs +0.031 by itself. Against their own base the corrections add nothing:
+
+| Correction | vs own base | Correction sd | Slope of own base's miss on it |
+|---|---|---|---|
+| A1 | +0.0000 (-0.0041, +0.0038) | 0.044 | +0.50 (t +0.5 per meeting) |
+| A2 | -0.0003 (-0.0058, +0.0054) | 0.052 | +0.56 (t -0.2) |
+| A3 | -0.0008 (-0.0031, +0.0015) | 0.036 | +0.82 (t -0.5) |
+
+Selected epochs (first member per fold and seed): A1 mean 3.9 (often 0, the zero correction),
+A2 8.1, A3 8.2.
+
+**G4 out of sample** (top 1,500, sector intercepts and sector x s_hawk / x s_dove fit on
+training folds; null = nothing beyond beta; positive = worse): days 0-2 +0.043
+(-0.012, +0.111), day 0 +0.008 (-0.005, +0.022). Scratchpad `g4_oos.py`.
+
+## Reading
+
+- **With the two-beta base, the networks have nothing left to add.** v2's CAPM-base networks
+  deviated from CAPM by 0.085 per stock, with slope 1.5. Here, on top of the two-beta base, the
+  corrections are half that size (0.036-0.052) and have no skill (slopes 0.5-0.8, t < 1). The
+  v2 edge was the beta smoothing; once the base has it, the transformer, the MLP and the
+  projection all learn the same nothing.
+- **Recency weighting, within-meeting ranks and signed shocks do not help.** Ranks are slightly
+  but measurably worse after 2004. The signed-shock sector pattern is one more in-sample sector
+  pattern that does not predict.
+- **A cost of the review's fix 1.** Keeping the base on 85% of the window throws away the most
+  recent 15% of meetings, and on these data that costs more (0.031) than any correction gains.
+  Future arms should select epochs with the inner split, then refit the base (and, at the
+  selected epoch count, the correction) on the full training window, as the review allowed.
+- **Best model in v3: A0, the five-number two-beta CAPM.** It is the reference to beat.

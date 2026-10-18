@@ -1,0 +1,27 @@
+{
+  "question": "Q3",
+  "question_key": "q3_susceptibility",
+  "name": "v3-signed-gate",
+  "run_id": "20261017-233233_v3-signed-gate",
+  "role": "exploratory",
+  "created": "2026-10-17T23:32:33",
+  "params": {
+    "through": "2021-12-31",
+    "universe": "top1500",
+    "p_pass": 0.01
+  },
+  "metrics": {
+    "G4_passing": 2
+  },
+  "datasets": {},
+  "tables": [
+    "verdict",
+    "tests"
+  ],
+  "figures": [],
+  "notes": "Signed-shock gate G4 (docs/encoder/q3-v3-results.md); no model fit.",
+  "env": {
+    "python": "3.12.10",
+    "pandas": "3.0.6"
+  }
+}
