@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 
 REPO = Path(__file__).resolve().parents[2]
-PACKAGES = {"fedcore": "core", "fedci": "dml", "fedenc": "encoder", "fedcde": "cde"}
+PACKAGES = {"fedcore": "core", "fedci": "dml", "fedenc": "encoder", "fedcde": "cde", "fedtrade": "trading"}
 
 
 def _imports(pkg: str) -> set[str]:

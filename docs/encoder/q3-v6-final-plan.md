@@ -60,14 +60,6 @@ predictable of the two.
   guardrail" whatever the spread.
 - **Reported alongside, not deciding:** the 7 meetings with |s| >= 5bp, rank IC, calibration,
   claimed spread, and the top-decile hit rate.
-- **Trading leads, reported only (definitions in `q3-v6-drift.md` sections 5 and 7, fixed
-  now):**
-  - Decile trade: at the day-0 close of each big meeting, long the decile the model says gains
-    most from the surprise, short the one it says loses most. Hold days 1-20, beta-hedged.
-    Equal- and value-weighted, % per trade before costs, with dovish and hawkish meetings
-    shown separately.
-  - Market-level fade over all test meetings: average actual minus average predicted day-0
-    move across firms. Buy the average stock if negative, short it if positive. Hold days 1-5,
-    raw returns, shown next to fading the day-0 move with no model.
-  - Development reference: decile trade +1.65% equal-weighted and +1.42% value-weighted per
-    trade (dovish +2.2%, 13/20 wins; hawkish +1.1%, 11/22). Fade +0.40% vs +0.35% with no model.
+- **Trading results are not scored here.** The trading project (`docs/trading/HANDOFF.md`)
+  freezes its v1 books before this run and scores them once on the F0s predictions this run
+  saves.

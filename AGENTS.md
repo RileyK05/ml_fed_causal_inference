@@ -16,7 +16,8 @@ or anything that saves a run. A handoff doc asking for training does not count a
 | `dml/` | `fedci` | Q1 DML project: pipelines, `eval/dml.py`, FastAPI backend, `frontend/` (React app + Streamlit viewer), `results/` |
 | `encoder/` | `fedenc` | Q3 two-part patch-transformer model (final test done). Results and next steps: `docs/reports/encoder-report.md`; design: `docs/encoder/transformer.md`; old pretraining code at tag `q3-pretraining-archive` |
 | `cde/` | `fedcde` | Q3 Neural CDE project. Build spec: `docs/cde/HANDOFF.md` |
-| `docs/` | | **All docs.** Project-wide spec at the top (`question.md`, `methods.md`, `agent-guide.md`); one subfolder per project (`docs/core/`, `docs/dml/`, `docs/encoder/`, `docs/cde/`) with its HANDOFF brief and design notes; agent reports in `docs/reports/`. Project folders hold only a README |
+| `trading/` | `fedtrade` | Q5 trades on frozen Q3 predictions (read as files from `encoder/results`). Plan: `docs/trading/HANDOFF.md`; Q3 state it builds on: git tag `fed_pred_encoder` |
+| `docs/` | | **All docs.** Project-wide spec at the top (`question.md`, `methods.md`, `agent-guide.md`); one subfolder per project (`docs/core/`, `docs/dml/`, `docs/encoder/`, `docs/cde/`, `docs/trading/`) with its HANDOFF brief and design notes; agent reports in `docs/reports/`. Project folders hold only a README |
 
 **Isolation rule:** projects import `fedcore` and never each other; `fedcore` imports no
 project. `core/tests/test_isolation.py` enforces it. Code needed by 2+ projects goes in
@@ -24,8 +25,8 @@ project. `core/tests/test_isolation.py` enforces it. Code needed by 2+ projects 
 
 ## Commands
 
-- One venv at the repo root. Install: `.venv\Scripts\python -m pip install -e "core[dev]" -e "dml[dev,model]" -e "encoder[dev]" -e "cde[dev]"` (add `[dl]` to encoder/cde for torch).
-- Verify (in order): `fedcore check` (data integrity) -> `pytest core` -> `pytest dml` (includes headless renders of every viewer page) -> `pytest encoder` -> `pytest cde`.
+- One venv at the repo root. Install: `.venv\Scripts\python -m pip install -e "core[dev]" -e "dml[dev,model]" -e "encoder[dev]" -e "cde[dev]" -e "trading[dev]"` (add `[dl]` to encoder/cde for torch).
+- Verify (in order): `fedcore check` (data integrity) -> `pytest core` -> `pytest dml` (includes headless renders of every viewer page) -> `pytest encoder` -> `pytest cde` -> `pytest trading`.
 - If `pytest` dies with `PermissionError` on `Temp\pytest-of-moomi`, rerun with `--basetemp=<short writable dir>`; the default temp root is broken and needs admin to delete. Keep the path short: Windows' 260-character limit breaks `ResultStore` tests under deep temp paths.
 - There is no lint/typecheck/CI config. Do not invent one unless asked.
 - CLIs: `fedcore check | catalog | sql "SELECT ..."`; `fedci check | catalog | sql | run q1 k=v | runs [q1] | app | serve`.
@@ -43,7 +44,7 @@ project. `core/tests/test_isolation.py` enforces it. Code needed by 2+ projects 
 ## Questions and results
 
 - Question IDs Q1–Q5 are permanent (Q2 is parked but kept for run continuity): never renumber or rename them. Definitions live in `core/fedcore/questions/`; `core/tests/test_registry.py` enforces the order and that every `spec.datasets` entry exists in the catalog.
-- Pipelines live in the project that answers the question: Q1 (built) and Q2 (parked stub) in `dml/fedci/questions/`; Q3 in `encoder/` and `cde/`. Q4/Q5 have definitions only. Pipeline contract: `run(store, **params)`; all output goes through `ResultStore.save(...)`, nothing is written anywhere else.
+- Pipelines live in the project that answers the question: Q1 (built) and Q2 (parked stub) in `dml/fedci/questions/`; Q3 in `encoder/` and `cde/`; Q5 (and the Q4 gap checks) in `trading/`. Q4 has a definition only. Pipeline contract: `run(store, **params)`; all output goes through `ResultStore.save(...)`, nothing is written anywhere else.
 - Runs are append-only under `<project>/results/<question key>/<run_id>/` with data fingerprints; never overwrite or delete runs. Tag `role` as `primary`/`robustness`/`exploratory`: one primary spec per active question, every other run adds to the multiple-testing count.
 
 ## Evaluation rules (enforced in `fedcore.protocol`)
