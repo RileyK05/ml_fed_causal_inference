@@ -110,10 +110,13 @@ def _make_model(encoder: nn.Module, panel: Q3Panel) -> V2StructModel:
     return model
 
 
+INPUT_KEYS = ("history", "history_mask", "fundamentals", "fundamentals_mask", "context")
+
+
 def _correction(model, x: dict, rows: torch.Tensor, q: torch.Tensor, codes: torch.Tensor, s: torch.Tensor):
-    """Projected (delta_a, delta_b) for ``rows`` (whole meetings)."""
-    a_raw, b_mat = model(*(x[k][rows] for k in ("history", "history_mask", "fundamentals",
-                                                 "fundamentals_mask", "context")))
+    """Projected (delta_a, delta_b) for ``rows`` (whole meetings). A model with ``input_keys``
+    (e.g. the v5 text arm) takes those inputs from ``x`` instead of the default five."""
+    a_raw, b_mat = model(*(x[k][rows] for k in getattr(model, "input_keys", INPUT_KEYS)))
     inverse, width, _ = _segments(codes[rows])
     da = project(a_raw.double(), q[rows], inverse, width)
     db = project(b_mat[:, 0].double(), q[rows], inverse, width)

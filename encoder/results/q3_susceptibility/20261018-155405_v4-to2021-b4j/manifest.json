@@ -1,0 +1,75 @@
+{
+  "question": "Q3",
+  "question_key": "q3_susceptibility",
+  "name": "v4-to2021-B4j",
+  "run_id": "20261018-155405_v4-to2021-b4j",
+  "role": "exploratory",
+  "created": "2026-10-18T15:54:05",
+  "params": {
+    "arm": "B4j",
+    "seeds": [
+      0,
+      1,
+      2
+    ],
+    "min_train": 60,
+    "test_size": 16,
+    "through": "2021-12-31",
+    "configs": {
+      "B4j": {
+        "model": "neural",
+        "encoder": "summary",
+        "b_only": false,
+        "members": 3,
+        "lr": 0.001,
+        "weight_decay": 0.0001,
+        "max_epochs": 40,
+        "patience": 10,
+        "meetings_per_batch": 4,
+        "val_frac": 0.15,
+        "base": "capm_beta_both",
+        "projection": "beta",
+        "refit": "step-matched"
+      }
+    },
+    "panel_fingerprint": "2f84a4acdf8968b9",
+    "plan": "docs/encoder/q3-v4-plan.md"
+  },
+  "metrics": {
+    "n_seeds": 3,
+    "n_test_meetings": 161,
+    "mse_per_meeting": 5.903285653486511,
+    "mse_per_meeting_std": 0.0001857318950003505,
+    "centered_mse": 4.121963702053907,
+    "centered_mse_std": 0.0001857318950008292,
+    "rank_ic": 0.05949928711888091,
+    "rank_ic_std": 0.00017659853346917357,
+    "rank_ic_defined_frac": 1.0,
+    "rank_ic_defined_frac_std": 0.0,
+    "b_slope": 1.4443580358820716,
+    "b_se": 1.3914776621121234,
+    "b_t": 1.038003034622691
+  },
+  "datasets": {
+    "crsp_daily": "76f7cd27e0c5",
+    "sp500_members": "766f0d47f931",
+    "ff_factors_daily": "86bd2cd117b1",
+    "ccm_link": "39f69dc59797",
+    "comp_fundq": "60eaa21d9aab",
+    "comp_gics": "644f6f0f534a",
+    "usmpd_statements": "8494c70a7e8b",
+    "mps_surprises": "c5b7d50b768c",
+    "treasury_1y": "58fc38308746"
+  },
+  "tables": [
+    "predictions",
+    "folds",
+    "curves"
+  ],
+  "figures": [],
+  "notes": "",
+  "env": {
+    "python": "3.11.10",
+    "pandas": "3.0.6"
+  }
+}

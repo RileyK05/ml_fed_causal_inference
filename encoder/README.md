@@ -11,6 +11,14 @@ the firm-to-firm differences from an average of centered-a networks.
 (masked-patch and next-return pretraining, checkpoints, staged fine-tuning) was removed; it is
 at git tag `q3-pretraining-archive`, its docs in `docs/archive/encoder/`.
 
+**Status (2026-10-21), snapshot at git tag `fed_pred_encoder`:**
+- v4-v6 (`v4.py`, `v5text.py`, `v6.py`) put b-only corrections on the two-beta base and score
+  them by the beyond-beta spread (`fedcore.q3.beyond_beta`).
+- No arm passes the development bar. The summary MLP (F0s) is the steadiest. Its call is a
+  credit tilt, and it predicts post-meeting drift (`docs/encoder/q3-v6-drift.md`).
+- Pending: the one-shot F0s test on 2022-2025, plan in `docs/encoder/q3-v6-final-plan.md`.
+- The trading work built on these predictions lives in `trading/` (`fedtrade`).
+
 | Module | What |
 |---|---|
 | `decouple.py` | `StructModel` (centered a), `DecoupleArm`, `TwoPartArm`; commands `run`, `confirm`, `final` |

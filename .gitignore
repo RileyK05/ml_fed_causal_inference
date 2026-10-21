@@ -47,3 +47,15 @@ core/data/processed/q3_holdout/
 
 # Local vast.ai helper scripts (host-specific; they move licensed WRDS data). Never commit.
 vast_*.sh
+
+# Free sources keyed by licensed Compustat ids (gvkey, CIK list), and large raw downloads.
+core/data/raw/hoberg_phillips/
+core/data/interim/hoberg_phillips/
+core/data/raw/edgar/
+core/data/interim/edgar/
+core/data/raw/frb_gsw/
+# Q3 channel table built from WRDS data: licensed, rebuilt by fedcore.q3.channels.load_channels().
+core/data/processed/q3_channels/
+core/data/processed/q3_text/
+core/data/processed/q3_shock_panel/
+core/data/processed/q3_filing_vectors/

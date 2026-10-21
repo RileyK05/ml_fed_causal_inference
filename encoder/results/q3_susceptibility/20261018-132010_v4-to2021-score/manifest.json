@@ -1,0 +1,52 @@
+{
+  "question": "Q3",
+  "question_key": "q3_susceptibility",
+  "name": "v4-to2021-score",
+  "run_id": "20261018-132010_v4-to2021-score",
+  "role": "exploratory",
+  "created": "2026-10-18T13:20:10",
+  "params": {
+    "prefix": "v4-to2021",
+    "primary": 0.25,
+    "guardrail": 0.005,
+    "standout": [
+      "2004-01-28",
+      "2011-09-21"
+    ],
+    "runs": {
+      "B0": "20261018-113714_v4-to2021-b0",
+      "B1": "20261018-114946_v4-to2021-b1",
+      "B2": "20261018-120157_v4-to2021-b2",
+      "B3c": "20261018-121111_v4-to2021-b3c",
+      "B3": "20261018-121429_v4-to2021-b3",
+      "B4": "20261018-160408_v4-to2021-b4",
+      "B4j": "20261018-155405_v4-to2021-b4j",
+      "B5": "20261018-171514_v4-to2021-b5",
+      "B5j": "20261018-171250_v4-to2021-b5j"
+    }
+  },
+  "metrics": {
+    "B1_supported": 0,
+    "B2_supported": 0,
+    "B3c_supported": 0,
+    "B3_supported": 0,
+    "B4_supported": 0,
+    "B4j_supported": 0,
+    "B5_supported": 0,
+    "B5j_supported": 0
+  },
+  "datasets": {},
+  "tables": [
+    "counts",
+    "mse",
+    "vs-b0",
+    "pairs",
+    "b-correlations"
+  ],
+  "figures": [],
+  "notes": "Read-only scoring of saved v4 predictions (docs/encoder/q3-v4-plan.md).",
+  "env": {
+    "python": "3.12.10",
+    "pandas": "3.0.6"
+  }
+}

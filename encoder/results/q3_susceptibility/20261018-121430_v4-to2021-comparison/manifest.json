@@ -1,0 +1,65 @@
+{
+  "question": "Q3",
+  "question_key": "q3_susceptibility",
+  "name": "v4-to2021-comparison",
+  "run_id": "20261018-121430_v4-to2021-comparison",
+  "role": "exploratory",
+  "created": "2026-10-18T12:14:30",
+  "params": {
+    "through": "2021-12-31",
+    "configs": {
+      "B0": {
+        "model": "capm_beta_both"
+      },
+      "B1": {
+        "model": "ridge_b_only",
+        "features": "all",
+        "sector": false,
+        "peer": false,
+        "val_frac": 0.15,
+        "base": "capm_beta_both",
+        "projection": "beta"
+      },
+      "B2": {
+        "model": "ridge_b_only",
+        "features": "named",
+        "sector": false,
+        "peer": false,
+        "val_frac": 0.15,
+        "base": "capm_beta_both",
+        "projection": "beta"
+      },
+      "B3c": {
+        "model": "ridge_b_only",
+        "features": "named",
+        "sector": true,
+        "peer": false,
+        "val_frac": 0.15,
+        "base": "capm_beta_both",
+        "projection": "beta"
+      },
+      "B3": {
+        "model": "ridge_b_only",
+        "features": "named",
+        "sector": true,
+        "peer": true,
+        "val_frac": 0.15,
+        "base": "capm_beta_both",
+        "projection": "beta"
+      }
+    },
+    "panel_fingerprint": "2f84a4acdf8968b9",
+    "plan": "docs/encoder/q3-v4-plan.md"
+  },
+  "metrics": {},
+  "datasets": {},
+  "tables": [
+    "comparison"
+  ],
+  "figures": [],
+  "notes": "",
+  "env": {
+    "python": "3.12.10",
+    "pandas": "3.0.6"
+  }
+}

@@ -1,0 +1,44 @@
+{
+  "question": "Q3",
+  "question_key": "q3_susceptibility",
+  "name": "v6-to2021-score",
+  "run_id": "20261020-180616_v6-to2021-score",
+  "role": "exploratory",
+  "created": "2026-10-20T18:06:16",
+  "params": {
+    "prefix": "v6-to2021",
+    "base_prefix": "v4-to2021",
+    "runs": {
+      "F0": "20261020-174304_v6-to2021-f0",
+      "F1": "20261020-192506_v6-to2021-f1",
+      "F2": "20261020-182336_v6-to2021-f2",
+      "F3": "20261020-174419_v6-to2021-f3",
+      "F0s": "20261020-181017_v6-to2021-f0s",
+      "F1s": "20261020-192813_v6-to2021-f1s"
+    },
+    "standout": [
+      "2004-01-28",
+      "2011-09-21"
+    ],
+    "n_boot": 5000
+  },
+  "metrics": {
+    "F0_passes": 0,
+    "F1_passes": 0,
+    "F2_passes": 0,
+    "F3_passes": 0,
+    "F0s_passes": 0,
+    "F1s_passes": 0
+  },
+  "datasets": {},
+  "tables": [
+    "arms",
+    "pairs"
+  ],
+  "figures": [],
+  "notes": "Read-only scoring of saved v6 predictions (docs/encoder/q3-v6-plan.md section 1).",
+  "env": {
+    "python": "3.12.10",
+    "pandas": "3.0.6"
+  }
+}

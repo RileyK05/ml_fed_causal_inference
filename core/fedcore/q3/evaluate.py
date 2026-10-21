@@ -76,6 +76,10 @@ def run_walk_forward(
             model.fit(train_panel, **kw)
             mu, a_hat, b_hat = _as_numpy(model.predict(test_panel))
             frame = _prediction_frame(test_panel, mu, a_hat, b_hat, fold.k, int(seed))
+            extras = getattr(model, "prediction_extras", None)
+            if extras is not None:  # optional named components, e.g. base and correction parts
+                for name, values in extras(test_panel).items():
+                    frame[name] = np.asarray(values, dtype=np.float64)
             pred_frames.append(frame)
             fit_result = getattr(model, "fit_result", None)
             best_epoch = np.nan if fit_result is None else fit_result.best_epoch
@@ -96,6 +100,8 @@ def run_walk_forward(
                     "test_end": fold.test.max(),
                     "best_epoch": best_epoch,
                     "best_val_loss": best_val,
+                    "member_selection": None if fit_result is None
+                    else str(getattr(fit_result, "member_selection", None)),
                 }
             )
             if fit_result is not None:

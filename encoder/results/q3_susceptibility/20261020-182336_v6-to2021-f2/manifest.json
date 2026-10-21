@@ -1,0 +1,102 @@
+{
+  "question": "Q3",
+  "question_key": "q3_susceptibility",
+  "name": "v6-to2021-F2",
+  "run_id": "20261020-182336_v6-to2021-f2",
+  "role": "exploratory",
+  "created": "2026-10-20T18:23:36",
+  "params": {
+    "arm": "F2",
+    "seeds": [
+      0,
+      1,
+      2
+    ],
+    "min_train": 60,
+    "test_size": 16,
+    "through": "2021-12-31",
+    "panel_fingerprint": "2f84a4acdf8968b9",
+    "shock_panel": {
+      "threshold_bp": 5.0,
+      "n_rows": 679996,
+      "n_meetings": 1359,
+      "inputs": {
+        "crsp_daily": "76f7cd27e0c5",
+        "sp500_members": "766f0d47f931",
+        "ff_factors_daily": "86bd2cd117b1",
+        "ccm_link": "39f69dc59797",
+        "comp_fundq": "60eaa21d9aab",
+        "comp_gics": "644f6f0f534a",
+        "usmpd_statements": "8494c70a7e8b",
+        "mps_surprises": "c5b7d50b768c",
+        "treasury_1y": "58fc38308746",
+        "gsw_yields": "3156efd54aa4"
+      }
+    },
+    "configs": {
+      "F2": {
+        "model": "v6",
+        "encoder": "transformer",
+        "b_only": true,
+        "members": 3,
+        "lr": 0.001,
+        "weight_decay": 0.0001,
+        "max_epochs": 40,
+        "patience": 10,
+        "meetings_per_batch": 4,
+        "val_frac": 0.15,
+        "base": "capm_beta_both",
+        "projection": "beta",
+        "refit": "step-matched",
+        "pretrain": true,
+        "pretrain_events": 1359,
+        "pretrain_epochs": 20,
+        "pretrain_patience": 3,
+        "text": "filing_level",
+        "gate_lambda": 0.5,
+        "select_big": true,
+        "select_threshold": 0.25
+      }
+    },
+    "plan": "docs/encoder/q3-v6-plan.md"
+  },
+  "metrics": {
+    "n_seeds": 3,
+    "n_test_meetings": 161,
+    "mse_per_meeting": 5.9025361817718425,
+    "mse_per_meeting_std": 0.0008873360837557456,
+    "centered_mse": 4.121214230339238,
+    "centered_mse_std": 0.0008873360837563703,
+    "rank_ic": 0.05793101894324768,
+    "rank_ic_std": 0.0011622207624171431,
+    "rank_ic_defined_frac": 1.0,
+    "rank_ic_defined_frac_std": 0.0,
+    "b_slope": 1.1387051805227977,
+    "b_se": 1.0726494133093185,
+    "b_t": 1.0615818797771819
+  },
+  "datasets": {
+    "crsp_daily": "76f7cd27e0c5",
+    "sp500_members": "766f0d47f931",
+    "ff_factors_daily": "86bd2cd117b1",
+    "ccm_link": "39f69dc59797",
+    "comp_fundq": "60eaa21d9aab",
+    "comp_gics": "644f6f0f534a",
+    "usmpd_statements": "8494c70a7e8b",
+    "mps_surprises": "c5b7d50b768c",
+    "treasury_1y": "58fc38308746",
+    "gsw_yields": "3156efd54aa4",
+    "edgar_market_risk": "1724ca8b0319"
+  },
+  "tables": [
+    "predictions",
+    "folds",
+    "curves"
+  ],
+  "figures": [],
+  "notes": "",
+  "env": {
+    "python": "3.11.13",
+    "pandas": "3.0.6"
+  }
+}

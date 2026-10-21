@@ -1,0 +1,97 @@
+{
+  "question": "Q3",
+  "question_key": "q3_susceptibility",
+  "name": "v4-to2021-B0",
+  "run_id": "20261018-113714_v4-to2021-b0",
+  "role": "exploratory",
+  "created": "2026-10-18T11:37:14",
+  "params": {
+    "arm": "B0",
+    "seeds": [
+      0
+    ],
+    "min_train": 60,
+    "test_size": 16,
+    "through": "2021-12-31",
+    "configs": {
+      "B0": {
+        "model": "capm_beta_both"
+      },
+      "B1": {
+        "model": "ridge_b_only",
+        "features": "all",
+        "sector": false,
+        "peer": false,
+        "val_frac": 0.15,
+        "base": "capm_beta_both",
+        "projection": "beta"
+      },
+      "B2": {
+        "model": "ridge_b_only",
+        "features": "named",
+        "sector": false,
+        "peer": false,
+        "val_frac": 0.15,
+        "base": "capm_beta_both",
+        "projection": "beta"
+      },
+      "B3c": {
+        "model": "ridge_b_only",
+        "features": "named",
+        "sector": true,
+        "peer": false,
+        "val_frac": 0.15,
+        "base": "capm_beta_both",
+        "projection": "beta"
+      },
+      "B3": {
+        "model": "ridge_b_only",
+        "features": "named",
+        "sector": true,
+        "peer": true,
+        "val_frac": 0.15,
+        "base": "capm_beta_both",
+        "projection": "beta"
+      }
+    },
+    "panel_fingerprint": "2f84a4acdf8968b9",
+    "plan": "docs/encoder/q3-v4-plan.md"
+  },
+  "metrics": {
+    "n_seeds": 1,
+    "n_test_meetings": 161,
+    "mse_per_meeting": 5.902416783419968,
+    "mse_per_meeting_std": 0.0,
+    "centered_mse": 4.121094831987364,
+    "centered_mse_std": 0.0,
+    "rank_ic": 0.05752127722945387,
+    "rank_ic_std": 0.0,
+    "rank_ic_defined_frac": 1.0,
+    "rank_ic_defined_frac_std": 0.0,
+    "b_slope": 1.4442744762882496,
+    "b_se": 1.4907174765720232,
+    "b_t": 0.9688452030557986
+  },
+  "datasets": {
+    "crsp_daily": "56a316e2b455",
+    "sp500_members": "766f0d47f931",
+    "ff_factors_daily": "86bd2cd117b1",
+    "ccm_link": "39f69dc59797",
+    "comp_fundq": "60eaa21d9aab",
+    "comp_gics": "644f6f0f534a",
+    "usmpd_statements": "8494c70a7e8b",
+    "mps_surprises": "c5b7d50b768c",
+    "treasury_1y": "58fc38308746"
+  },
+  "tables": [
+    "predictions",
+    "folds",
+    "curves"
+  ],
+  "figures": [],
+  "notes": "",
+  "env": {
+    "python": "3.12.10",
+    "pandas": "3.0.6"
+  }
+}

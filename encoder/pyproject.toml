@@ -11,6 +11,8 @@ dependencies = ["fedcore"]
 
 [project.optional-dependencies]
 dl = ["torch>=2.2", "lightgbm>=4"]
+# v5 fundamentals tower (EmbeddingGemma 2 needs transformers 5.20+)
+text = ["transformers>=5.20", "huggingface_hub>=1.0", "lxml>=5", "beautifulsoup4>=4.12"]
 dev = ["pytest>=8"]
 
 [tool.setuptools.packages.find]

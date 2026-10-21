@@ -1,0 +1,31 @@
+{
+  "question": "Q3",
+  "question_key": "q3_susceptibility",
+  "name": "v5text-to2021-score",
+  "run_id": "20261020-065548_v5text-to2021-score",
+  "role": "exploratory",
+  "created": "2026-10-20T06:55:48",
+  "params": {
+    "prefix": "v5text-to2021",
+    "base_prefix": "v4-to2021",
+    "primary": 0.25,
+    "runs": {
+      "T0": "20261020-014915_v5text-to2021-t0",
+      "T1": "20261020-105039_v5text-to2021-t1",
+      "T1m": "20261020-052509_v5text-to2021-t1m",
+      "T1f": "20261020-045059_v5text-to2021-t1f"
+    }
+  },
+  "metrics": {},
+  "datasets": {},
+  "tables": [
+    "conditional",
+    "context"
+  ],
+  "figures": [],
+  "notes": "Read-only conditional scoring of v5 text runs (docs/encoder/q3-v5-plan.md B3).",
+  "env": {
+    "python": "3.12.10",
+    "pandas": "3.0.6"
+  }
+}

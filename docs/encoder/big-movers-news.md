@@ -68,3 +68,44 @@ two-beta CAPM misses, S&P 500, development meetings.
   meetings against the two-beta CAPM.
 - **Second news pass** on the unexplained group moves (2002-11-06, 2007-09-18, 2008-12-16,
   2011-09-21) with sector-level sources, to confirm they were Fed-day sector moves.
+
+## Sources for the attributed events
+
+Events the research agents tied to dated news (confidence as they reported it). Unlisted events
+were "not found". Move sizes are omitted (CRSP data is licensed).
+
+| Meeting | Ticker | Cause | Source | Confidence |
+|---|---|---|---|---|
+| 2001-11-06 | HWP, CPQ | Hewlett family opposes the HP-Compaq merger | https://money.cnn.com/2001/11/06/deals/hp_compaq/ | high |
+| 2001-11-06 | ENE | Enron seeking at least $2B in private cash | CNN Enron timeline (page URL not captured) | low |
+| 2001-11-06 | NT | $1.1B Sprint supply deal announced the day before | https://northernminer.com/news/trading-summary-765/1000013943 | low |
+| 2002-08-13 | DE | Fiscal Q3 results released that day | https://www.sec.gov/Archives/edgar/data/0000315189/000031518902000046/htmltemplate.htm | medium |
+| 2002-08-13 | TIF | Q2 earnings released that day | https://www.sec.gov/Archives/edgar/data/0000098246/000009824602000039/form8_k081302.txt | low |
+| 2002-11-06 | PBG | Pepsi-Gemex tender completed; 2003 guidance | https://www.sec.gov/Archives/edgar/data/0001076405/000095012302010290/y65245ae8vk.txt | medium |
+| 2002-11-06 | CPN | Lodi contract renegotiated; Q3 results | https://www.sec.gov/Archives/edgar/data/0000916457/000091645702000035/i10502.txt | medium |
+| 2003-06-25 | NFB | Balance-sheet restructuring, buyback, dividend (8-K the day before) | https://www.sec.gov/Archives/edgar/data/0000352510/000095012303007386/y87816e8vk.txt | low |
+| 2004-01-28 | THC | Restructuring: seeking buyers for 27 hospitals | https://www.sec.gov/Archives/edgar/data/0000070318/000110465904002089/a04-1707_18k.htm | medium |
+| 2004-01-28 | TUP | Q4 results, weak North America, lower guidance | https://www.sec.gov/Archives/edgar/data/0001008654/000089109204000340/e16716ex99_1.txt | medium |
+| 2004-01-28 | PKI | Q4 beat, raised 2004 guidance | https://www.sec.gov/Archives/edgar/data/0000031791/000095013504000378/b49279pkexv99w1.txt | medium |
+| 2004-01-28 | STJ | Q4 sales +27% | https://www.sec.gov/Archives/edgar/data/0000203077/000089710104000160/stjude040391_ex1.htm | medium |
+| 2004-01-28 | ABI | Fiscal Q2 results | https://www.sec.gov/Archives/edgar/data/0000077551/000112528204000242/b329816_ex99-1.htm | medium |
+| 2004-01-28 | AV | Fiscal Q1 results after the prior close | https://www.sec.gov/Archives/edgar/data/0001116521/000110465904001841/a04-1595_1ex99d1.htm | medium |
+| 2007-09-18 | ETFC | Profit warning the evening before | https://www.calculatedriskblog.com/2007/09/etrade-warns-of-mortgage-fallout.html | medium |
+| 2007-09-18 | LEH | Earnings beat, but AP credits the close to the Fed cut (fed-rate) | https://honoluluadvertiser.com/article/2007/Sep/19/bz/hawaii709190391.html | medium |
+| 2008-01-30 | ABK, MBI | Downgrade speculation on the bond insurers | https://www.finance.cz/zpravy/reuters/MTFH70327nHKG280053-global-markets-u-s-bond-insurer-woes-shadow-big-fed-rate-cut | medium |
+| 2008-01-30 | CTX | Fiscal Q3 loss announced the day before | https://www.sec.gov/Archives/edgar/data/0000018532/000095013408001283/d53373exv99w1.htm | medium |
+| 2008-01-30 | PHM | Q4 write-downs and loss | https://www.sec.gov/Archives/edgar/data/0000822416/000095012408000422/k23417exv99w1.htm | medium |
+| 2008-01-30 | IFF | Q4 results | https://ir.iff.com/node/9556 | low |
+| 2008-01-30 | UIS | Q4 results the day before | https://www.sec.gov/Archives/edgar/data/0000746838/000074683808000013/fourthqearnings.txt | low |
+| 2008-01-30 | DOV | Q4 results | https://www.sec.gov/Archives/edgar/data/29905/000095012308000917/y47508exv99w1.htm | medium |
+| 2008-01-30 | RHI | Q4 results the day before | https://www.sec.gov/Archives/edgar/data/0000315213/000119312508014459/dex991.htm | medium |
+| 2008-09-16 | CEG | Post-Lehman contagion fears (industry) | https://thedailyrecord.com/2008/09/16/street-dings-constellation/ | medium |
+| 2008-09-16 | AIG | Own distress before the evening rescue | https://money.cnn.com/2008/09/16/news/companies/AIG/ | medium |
+| 2008-09-16 | MS | Fiscal Q3 results that day | https://investmentnews.com/industry-news/morgan-stanley-rushes-out-earnings/17402 | medium |
+| 2008-09-16 | MU | JMP downgrade | https://idahobusinessreview.com/?p=13083 | low |
+| 2008-09-16 | WM | CEO comments on the downgrade; takeover talk | https://consumerist.com/2008/09/16/wamus-stock-bumps-upwards | low |
+| 2008-12-16 | ETN | Q4 guidance cut that day | https://www.sec.gov/Archives/edgar/data/31277/000095015208010301/l34862aexv99.htm | medium |
+| 2011-09-21 | ORCL | Fiscal Q1 results the evening before | https://www.bloomberg.com/news/articles/2011-09-21/oracle-rises-after-corporate-software-spending-boosts-earnings | high |
+| 2011-09-21 | RRC | Report of a possible Shell bid | https://www.aol.com/2011-09-21-range-resources-shares-soared-what-you-need-to-kno.html | high |
+| 2011-09-21 | HPQ | Reports Whitman would replace Apotheker | https://www.theregister.co.uk/2011/09/22/whitman_hp_vote/ | high |
+| 2011-09-21 | GIS | Fiscal Q1 results | https://www.sec.gov/Archives/edgar/data/40704/000119312511252810/d234780dex99.htm | medium |

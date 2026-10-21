@@ -185,6 +185,57 @@ datasets:
     questions: [Q3]
     description: Release dates of the CPI (from 1999-06) and the Employment Situation (jobs report, from 1994-02). Scheduled macro-news days for Q3 release-day tests.
 
+  gsw_yields:
+    path: interim/frb_gsw/gsw_yields.csv
+    layer: interim
+    source: Federal Reserve Board (Gurkaynak-Sack-Wright feds200628), parsed by fedcore.ingest.gsw
+    grain: daily
+    date_column: Date
+    key: [Date]
+    questions: [Q3]
+    description: Daily zero-coupon Treasury yields at 1, 2, 5, 10 and 30 years (percent, continuously compounded), 1961-present.
+
+  fomc_statement_text:
+    path: interim/fomc/fomc_statement_text.csv
+    layer: interim
+    source: federalreserve.gov statement pages, parsed by fedcore.ingest.fomc_text
+    grain: event
+    date_column: date
+    key: [date, source_file]
+    questions: [Q3]
+    description: Plain text of every FOMC statement linked from the Board's historical and calendar pages, 1994-present (scheduled and unscheduled).
+
+  # ---- Free firm-level sources (gitignored: keyed by licensed Compustat ids) ----
+  tnic3:
+    path: interim/hoberg_phillips/tnic3.parquet
+    layer: interim
+    source: Hoberg-Phillips TNIC-3 (hobergphillips.tuck.dartmouth.edu), cut by fedcore.ingest.tnic
+    grain: spell
+    date_column: usable_from
+    key: [year, gvkey1, gvkey2]
+    questions: [Q3]
+    description: Text-based product-market peer pairs by 10-K fiscal year, both firms in the CCM link tables; usable from April 1 of the next year.
+
+  edgar_filings:
+    path: interim/edgar/filings.parquet
+    layer: interim
+    source: SEC EDGAR submissions API, via fedcore.ingest.edgar
+    grain: event
+    date_column: filing_date
+    key: [accession]
+    questions: [Q3]
+    description: 10-K, 10-Q and 8-K filings (with amendments) of the Compustat firms on disk, with acceptance times and 8-K item codes.
+
+  edgar_market_risk:
+    path: interim/edgar/market_risk.parquet
+    layer: interim
+    source: SEC EDGAR filing documents, via fedcore.ingest.edgar
+    grain: event
+    date_column: filing_date
+    key: [accession]
+    questions: [Q3]
+    description: Market-risk section (10-K Item 7A, 10-Q Part I Item 3) per periodic filing, with floating/fixed/swap text measures and the no-material-change flag.
+
   # ---- Firm panel (WRDS; licensed, gitignored, pulled by fedcore.ingest.wrds) ----
   sp500_members:
     path: raw/wrds/sp500_members.parquet
